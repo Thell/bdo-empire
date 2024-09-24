@@ -23,8 +23,12 @@ def download_json_file(filename, outpath):
 
 
 def get_last_commit_hash():
+    import certifi
+    import ssl
+
+    context = ssl.create_default_context(cafile=certifi.where())
     url = "https://api.github.com/repos/shrddr/workermanjs/branches/main"
-    with request.urlopen(url) as response:
+    with request.urlopen(url, context=context) as response:
         data = json.load(response)
         return data["commit"]["sha"]
 
