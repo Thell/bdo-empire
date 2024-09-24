@@ -171,23 +171,26 @@ def create_problem(config, G):
     return prob
 
 
+def solve_with_highspy(prob, options, queue, results, process_index):
+    from random import randint
+
+    for i, option in enumerate(options.copy()):
+        if "random_seed" in option:
+            options[i] = f"random_seed={randint(0, 2147483647)}"
+    print(f"Process {process_index} starting using {options}")
+    prob.solve(HiGHS(options=options))
+    results[process_index] = prob.to_dict()
+    queue.put(process_index)
+    return
+
+
 def solve_par(prob, options, config):
     import multiprocessing
-    from random import randint
 
     manager = multiprocessing.Manager()
     processes = []
     queue = multiprocessing.Queue()
     results = manager.list(range(config["solver"]["num_processes"]))
-
-    def solve_with_highspy(prob, options, queue, results, process_index):
-        for i, option in enumerate(options.copy()):
-            if "random_seed" in option:
-                options[i] = f"random_seed={randint(0, 2147483647)}"
-        print(f"Process {process_index} starting using {options}")
-        prob.solve(HiGHS(options=options))
-        results[process_index] = prob.to_dict()
-        queue.put(process_index)
 
     for i in range(config["solver"]["num_processes"]):
         p = multiprocessing.Process(
