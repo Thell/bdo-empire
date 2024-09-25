@@ -1,14 +1,27 @@
 # main.py
 
-import customtkinter as ctk
-from CTkToolTip import CTkToolTip as ctktt
 from enum import Enum
 import json
-from tkinter import DISABLED, NORMAL, filedialog
+from math import inf
 import os
+from random import randint
+from tkinter import DISABLED, NORMAL, filedialog
+
+import customtkinter as ctk
+from CTkToolTip import CTkToolTip as ctktt
+from psutil import cpu_count
 
 from bdo_empire.initialize import initialize
 from bdo_empire.optimize import optimize
+
+solver_config = {
+    "num_processes": max(1, cpu_count(logical=False) - 1),
+    "mip_rel_gap": 1e-4,
+    "mip_feasibility_tolerance": 1e-4,
+    "primal_feasibility_tolerance": 1e-4,
+    "time_limit": inf,
+    "random_seed": randint(0, 2147483647),
+}
 
 purchased_lodging = {
     "Velia": 0,
@@ -131,6 +144,8 @@ class EmpireOptimizerApp(ctk.CTk):
         self.optimize_button.grid(row=row, column=1, padx=10, pady=10)
         self.optimize_status = ctk.CTkLabel(self, text=self.optimize_state.name)
         self.optimize_status.grid(row=row, column=3, padx=10, pady=10)
+        self.config_button = ctk.CTkButton(self, text="Config Solver", command=self.config_solver)
+        self.config_button.grid(row=row, column=2, padx=10, pady=10)
 
     def browse_prices_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json")])
@@ -159,7 +174,6 @@ class EmpireOptimizerApp(ctk.CTk):
         lodging_window.title("Purchased Lodging Setup")
         lodging_window.geometry("430x600")
 
-        # Create a scrollable frame for the list of towns
         scrollable_frame = ctk.CTkScrollableFrame(lodging_window, width=400, height=500)
         scrollable_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
 
@@ -239,6 +253,7 @@ class EmpireOptimizerApp(ctk.CTk):
             entry.tk_focusPrev().focus()
 
     def save_lodging_data(self, lodging_window):
+        global purchased_lodging
         for town, var in self.lodging_entries.items():
             value = var.get()
             purchased_lodging[town] = int(value) if value.isdigit() else 0
@@ -337,35 +352,54 @@ class EmpireOptimizerApp(ctk.CTk):
             self.optimize_button.configure(state=DISABLED)
         self.optimize_button.update()
 
+    def config_solver(self):
+        global solver_config
+
+        config_window = ctk.CTkToplevel(self)
+        config_window.title("Solver Configuration")
+        config_window.geometry("400x250")
+
+        self.config_entries = {}
+        row = 0
+        for setting, value in solver_config.items():
+            label = ctk.CTkLabel(config_window, text=setting)
+            label.grid(row=row, column=0, padx=10, pady=5)
+
+            entry_var = ctk.StringVar(value=str(value))
+            entry = ctk.CTkEntry(config_window, textvariable=entry_var)
+            entry.grid(row=row, column=1, padx=10, pady=5)
+
+            self.config_entries[setting] = entry_var
+            row += 1
+        config_window.protocol("WM_DELETE_WINDOW", lambda: self.save_config_data(config_window))
+
+    def save_config_data(self, config_window):
+        global solver_config
+        int_fields = ["num_processes", "random_seed"]
+        for setting, var in self.config_entries.items():
+            value = var.get()
+            solver_config[setting] = int(value) if setting in int_fields else float(value)
+        config_window.destroy()
+
     def optimize(self):
-        from math import inf
-        from random import randint
-        from psutil import cpu_count
+        global solver_config
 
         print("Begin optimization...")
         self.optimize_state = WidgetState.Running
         self.optimize_status.configure(text=self.optimize_state.name, text_color="green")
         self.optimize_status.update()
 
-        cp_limit = int(self.cp_entry.get())
-
         config = {}
         config["name"] = "Empire"
-        config["budget"] = cp_limit
+        config["budget"] = int(self.cp_entry.get())
         config["top_n"] = 4
         config["nearest_n"] = 5
         config["waypoint_ub"] = 25
-        config["solver"] = {}
-        config["solver"]["num_processes"] = max(1, cpu_count(logical=False) - 1)
-        config["solver"]["mip_rel_gap"] = 1e-4
-        config["solver"]["mip_feasibility_tolerance"] = 1e-4
-        config["solver"]["primal_feasibility_tolerance"] = 1e-4
-        config["solver"]["time_limit"] = inf
-        config["solver"]["random_seed"] = randint(0, 2147483647)
+        config["solver"] = solver_config
 
-        # Call optimizer
         with open(self.prices_entry.get(), "r") as file:
             prices = json.load(file)["effectivePrices"]
+
         if self.modifiers_entry.get():
             with open(self.modifiers_entry.get(), "r") as file:
                 modifiers = json.load(file)["regionModifiers"]
@@ -377,13 +411,9 @@ class EmpireOptimizerApp(ctk.CTk):
 
         optimize(config, prices, modifiers, lodging, outpath)
 
-        # If successful reset to waiting
         self.optimize_state = WidgetState.Waiting
         self.optimize_status.configure(text=self.optimize_state.name)
         self.optimize_status.update()
-        # Open a popup window stating optimization is complete and to import into workerman.
-
-        # If not successful... well, that sucks.
 
 
 def main():

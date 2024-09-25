@@ -171,20 +171,20 @@ def create_problem(config, G):
     return prob
 
 
-def solve_with_highspy(prob, options, queue, results, process_index):
+def solve_with_highspy(prob, options_dict, queue, results, process_index):
     from random import randint
 
-    for i, option in enumerate(options.copy()):
-        if "random_seed" in option:
-            options[i] = f"random_seed={randint(0, 2147483647)}"
-    print(f"Process {process_index} starting using {options}")
-    prob.solve(HiGHS(options=options))
+    options_dict["random_seed"] = randint(0, 2147483647)
+    print(f"Process {process_index} starting using {options_dict}")
+    solver = HiGHS()
+    solver.optionsDict = options_dict
+    prob.solve(solver)
     results[process_index] = prob.to_dict()
     queue.put(process_index)
     return
 
 
-def solve_par(prob, options, config):
+def solve_par(prob, options_dict, config):
     import multiprocessing
 
     manager = multiprocessing.Manager()
@@ -194,7 +194,7 @@ def solve_par(prob, options, config):
 
     for i in range(config["solver"]["num_processes"]):
         p = multiprocessing.Process(
-            target=solve_with_highspy, args=(prob, options, queue, results, i)
+            target=solve_with_highspy, args=(prob, options_dict, queue, results, i)
         )
         processes.append(p)
         p.start()
@@ -227,18 +227,15 @@ def optimize(config, prices, modifiers, lodging, outpath):
     prob = create_problem(config, graph_data)
     print("Solving mip problem...")
 
-    options = [
-        f"mip_rel_gap={config["solver"]["mip_rel_gap"]}",
-        f"mip_feasibility_tolerance={config["solver"]["mip_feasibility_tolerance"]}",
-        f"primal_feasibility_tolerance={config["solver"]["primal_feasibility_tolerance"]}",
-        f"random_seed={config["solver"]["random_seed"]}",
-        f"time_limit={config["solver"]["time_limit"]}",
-    ]
+    options_dict = {k: v for k, v in config["solver"].items() if k != "num_processes"}
 
     if config["solver"]["num_processes"] == 1:
-        prob.solve(HiGHS(options=options))
+        print(f"Single process starting using {config["solver"]}")
+        solver = HiGHS()
+        solver.optionsDict = options_dict
+        prob.solve(solver)
     else:
-        prob = solve_par(prob, options, config)
+        prob = solve_par(prob, options_dict, config)
 
     print("Creating workerman json...")
     workerman_json = generate_workerman_data(prob, lodging, ref_data, graph_data)
