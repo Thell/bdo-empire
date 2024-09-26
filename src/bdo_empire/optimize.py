@@ -212,7 +212,6 @@ def solve_par(prob, options_dict, config):
 
 def optimize(config, prices, modifiers, lodging, outpath):
     datapath = os.path.join(os.path.dirname(__file__), "data")
-    print(modifiers)
     ref_data = get_reference_data(datapath, prices, modifiers, lodging)
     ref_data["config"] = config
     graph_data = generate_graph_data(ref_data)
