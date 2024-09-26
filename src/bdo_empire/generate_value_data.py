@@ -1,6 +1,4 @@
-"""Empire Node Value Generation
-Generate the workers and skillsets to maximize node valuations per town.
-"""
+# generate_value_data.py
 
 from math import ceil
 import bdo_empire.data_store as ds

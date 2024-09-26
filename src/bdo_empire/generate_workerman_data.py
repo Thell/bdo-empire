@@ -1,6 +1,4 @@
-"""Empire Workerman JSON Generation
-Parse optimizer output for workerman import.
-"""
+# generate_workerman_data.py
 
 from collections import Counter
 import json
