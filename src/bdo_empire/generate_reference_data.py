@@ -30,7 +30,7 @@ def get_value_data(prices: dict, modifiers: dict, data: dict) -> None:
     if latest_sha == current_sha:
         print("  ...re-using existing node values data.")
     else:
-        generate_value_data(ds.path(), prices, modifiers)
+        generate_value_data(prices, modifiers)
         ds.path().joinpath(sha_filename).write_text(latest_sha)
 
     data["plant_values"] = ds.read_json("node_values_per_town.json")

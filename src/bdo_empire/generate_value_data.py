@@ -2,16 +2,23 @@
 Generate the workers and skillsets to maximize node valuations per town.
 """
 
-import json
 from math import ceil
-from os import path
+import bdo_empire.data_store as ds
 
 
-def isGiant(charkey, data):
+def get_data_files(data: dict) -> None:
+    data["plantzone"] = ds.read_json("plantzone.json")
+    data["plantzone_drops"] = ds.read_json("plantzone_drops.json")
+    data["worker_skills"] = ds.read_json("skills.json")
+    data["worker_static"] = ds.read_json("worker_static.json")
+    data["distances_tk2pzk"] = ds.read_json("distances_tk2pzk.json")
+
+
+def isGiant(charkey: int, data: dict) -> bool:
     return data["worker_static"][str(charkey)]["species"] in [2, 4, 8]
 
 
-def skill_bonus(skill_set, data):
+def skill_bonus(skill_set: list, data: dict) -> dict:
     bonus = {"wspd": 0, "mspd": 0, "luck": 0}
     for sk in skill_set:
         skill_bonuses = data["worker_skills"].get(sk, {})
@@ -22,7 +29,7 @@ def skill_bonus(skill_set, data):
     return bonus
 
 
-def worker_stats(worker, skill_set, data):
+def worker_stats(worker: dict, skill_set, data: dict) -> dict:
     bonus = skill_bonus(skill_set, data)
     wspd = worker["wspd"] + bonus["wspd"]
     mspd_base = data["worker_static"][str(worker["charkey"])]["mspd"] / 100
@@ -31,11 +38,9 @@ def worker_stats(worker, skill_set, data):
     return {"wspd": wspd, "mspd": mspd, "luck": luck}
 
 
-def calcCyclesDaily(baseWorkload, wspd, dist, mspd, modifier):
-    # const activeWorkload = baseWorkload * (2 - this.productivity(rgk))
-    # const workMinutes = Math.ceil(activeWorkload / wspd)
-    # const cycleMinutes = 10 * workMinutes + moveMinutes
-    # ret = 24 * 60 / cycleMinutes
+def calcCyclesDaily(
+    baseWorkload: float, wspd: float, dist: float, mspd: float, modifier: float
+) -> float:
     moveMinutes = 2 * dist / mspd / 60
     activeWorkload = baseWorkload * (2 - modifier / 100)
     workMinutes = ceil(activeWorkload / wspd)
@@ -43,11 +48,11 @@ def calcCyclesDaily(baseWorkload, wspd, dist, mspd, modifier):
     return 24 * 60 / cycleMinutes
 
 
-def price_bunch(bunch, data):
+def price_bunch(bunch: dict, data: dict) -> float:
     return sum(data["market_value"][k] * q for k, q in bunch.items())
 
 
-def price_pzd(pzd, luck, data):
+def price_pzd(pzd: dict, luck: float, data: dict) -> float:
     unlucky_price = price_bunch(pzd.get("unlucky", {}), data)
     if "lucky" in pzd:
         lucky_price = price_bunch(pzd["lucky"], data)
@@ -55,13 +60,13 @@ def price_pzd(pzd, luck, data):
     return unlucky_price
 
 
-def price_lerp(lucky_price, unlucky_price, luck):
-    if lucky_price is None:
-        return unlucky_price
+def price_lerp(lucky_price: float, unlucky_price: float, luck: float) -> float:
     return (luck / 100) * lucky_price + (1 - luck / 100) * unlucky_price
 
 
-def profitPzTownStats(pzk, tnk, dist, wspd, mspd, luck, is_giant, data):
+def profitPzTownStats(
+    pzk: int, _tnk, dist: float, wspd: float, mspd: float, luck: float, is_giant: bool, data: dict
+) -> float:
     if dist == 9999999:
         return 0
 
@@ -87,7 +92,9 @@ def profitPzTownStats(pzk, tnk, dist, wspd, mspd, luck, is_giant, data):
     return priceDaily
 
 
-def profit(town, plantzone, dist, worker, skill_set, data):
+def profit(
+    town: str, plantzone: int, dist: float, worker: dict, skill_set: list, data: dict
+) -> float:
     stats = worker_stats(worker, skill_set, data)
     priceDaily = profitPzTownStats(
         plantzone,
@@ -102,30 +109,28 @@ def profit(town, plantzone, dist, worker, skill_set, data):
     return priceDaily
 
 
-def makeMedianChar(charkey, data):
-    ret = {}
+def makeMedianChar(charkey: int, data: dict) -> dict:
     stat = data["worker_static"][str(charkey)]
     pa_wspd = stat["wspd"]
     pa_mspdBonus = 0
     pa_luck = stat["luck"]
 
-    for i in range(2, 41):
+    for _ in range(2, 41):
         pa_wspd += (stat["wspd_lo"] + stat["wspd_hi"]) / 2
         pa_mspdBonus += (stat["mspd_lo"] + stat["mspd_hi"]) / 2
         pa_luck += (stat["luck_lo"] + stat["luck_hi"]) / 2
-
     pa_mspd = stat["mspd"] * (1 + pa_mspdBonus / 1e6)
 
-    ret["wspd"] = round(pa_wspd / 1e6 * 100) / 100
-    ret["mspd"] = round(pa_mspd) / 100
-    ret["luck"] = round(pa_luck / 1e4 * 100) / 100
-    ret["charkey"] = charkey
-    ret["isGiant"] = isGiant(charkey, data)
+    return {
+        "wspd": round(pa_wspd / 1e6 * 100) / 100,
+        "mspd": round(pa_mspd) / 100,
+        "luck": round(pa_luck / 1e4 * 100) / 100,
+        "charkey": charkey,
+        "isGiant": isGiant(charkey, data),
+    }
 
-    return ret
 
-
-def medianGoblin(tnk, data):
+def medianGoblin(tnk: int, data: dict) -> dict:
     if tnk == 1623:
         return makeMedianChar(8003, data)  # grana
     if tnk == 1604:
@@ -149,7 +154,7 @@ def medianGoblin(tnk, data):
     return makeMedianChar(7572, data)
 
 
-def medianGiant(tnk, data):
+def medianGiant(tnk: int, data: dict) -> dict:
     if tnk == 1623:
         return makeMedianChar(8006, data)  # grana
     if tnk == 1604:
@@ -173,7 +178,7 @@ def medianGiant(tnk, data):
     return makeMedianChar(7571, data)
 
 
-def medianHuman(tnk, data):
+def medianHuman(tnk: int, data: dict) -> dict:
     if tnk == 1623:
         return makeMedianChar(8009, data)  # grana
     if tnk == 1604:
@@ -197,7 +202,7 @@ def medianHuman(tnk, data):
     return makeMedianChar(7573, data)
 
 
-def optimize_skills(town, plantzone, dist, worker, data):
+def optimize_skills(town: str, plantzone: int, dist: float, worker: dict, data: dict):
     max_skills = 9
     w_bonuses = {0: {"skills": [], "profit": 0}}
     w_actions = ["wspd"]
@@ -264,21 +269,11 @@ def optimize_skills(town, plantzone, dist, worker, data):
     return step_results[0]
 
 
-def generate_value_data(datapath, prices, modifiers):
+def generate_value_data(prices: dict, modifiers: dict) -> None:
     data = {}
+    get_data_files(data)
     data["market_value"] = prices
     data["modifiers"] = modifiers
-
-    with open(path.join(datapath, "plantzone.json")) as datafile:
-        data["plantzone"] = json.load(datafile)
-    with open(path.join(datapath, "plantzone_drops.json")) as datafile:
-        data["plantzone_drops"] = json.load(datafile)
-    with open(path.join(datapath, "skills.json")) as datafile:
-        data["worker_skills"] = json.load(datafile)
-    with open(path.join(datapath, "worker_static.json")) as datafile:
-        data["worker_static"] = json.load(datafile)
-    with open(path.join(datapath, "distances_tk2pzk.json")) as datafile:
-        data["distances_tk2pzk"] = json.load(datafile)
 
     # Workerman sorts by nearest node to town.
     for town in data["distances_tk2pzk"]:
@@ -321,12 +316,10 @@ def generate_value_data(datapath, prices, modifiers):
                 int(s) for s in optimized_worker[1]["skills"].copy()
             ]
 
+    # Make the list a plantzone keyed list sorted by value in descending order for 'top_n'
     for plantzone, warehouse_data in output.copy().items():
         output[plantzone] = dict(
             sorted(warehouse_data.items(), key=lambda x: x[1]["value"], reverse=True)
         )
 
-    with open(path.join(datapath, "node_values_per_town.json"), "w") as file:
-        json.dump(output, file, indent=4)
-
-    return True
+    ds.write_json("node_values_per_town.json", output)
