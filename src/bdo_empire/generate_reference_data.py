@@ -1,63 +1,46 @@
 # generate_reference_data.py
 
+import hashlib
 import json
-import os
 
+import bdo_empire.data_store as ds
 from bdo_empire.generate_value_data import generate_value_data
 
 
-def get_reference_data(datapath, prices, modifiers, lodging):
-    """Read and prepare data from reference data files."""
-    import hashlib
-
+def get_data_files(data: dict) -> None:
     print("Reading data files...")
-    data = {}
-    with open(os.path.join(datapath, "plantzone.json")) as datafile:
-        data["all_plantzones"] = json.load(datafile).keys()
-    with open(os.path.join(datapath, "plantzone_drops.json")) as datafile:
-        data["plantzone_drops"] = json.load(datafile)
-    with open(os.path.join(datapath, "all_lodging_storage.json")) as datafile:
-        data["lodging_data"] = json.load(datafile)
-    with open(os.path.join(datapath, "town_node_translate.json")) as datafile:
-        data["town_to_group"] = json.load(datafile)["tnk2tk"]
-    with open(os.path.join(datapath, "town_node_translate.json")) as datafile:
-        data["group_to_town"] = json.load(datafile)["tk2tnk"]
-    with open(os.path.join(datapath, "warehouse_to_townname.json")) as datafile:
-        data["group_to_townname"] = json.load(datafile)
-    with open(os.path.join(datapath, "exploration.json")) as datafile:
-        data["waypoint_data"] = json.load(datafile)
-    with open(os.path.join(datapath, "deck_links.json")) as datafile:
-        data["waypoint_links"] = json.load(datafile)
+    data["all_plantzones"] = ds.read_json("plantzone.json")
+    data["plantzone_drops"] = ds.read_json("plantzone_drops.json")
+    data["lodging_data"] = ds.read_json("all_lodging_storage.json")
+    data["town_to_group"] = ds.read_json("town_node_translate.json")["tnk2tk"]
+    data["group_to_town"] = ds.read_json("town_node_translate.json")["tk2tnk"]
+    data["group_to_townname"] = ds.read_json("warehouse_to_townname.json")
+    data["waypoint_data"] = ds.read_json("exploration.json")
+    data["waypoint_links"] = ds.read_json("deck_links.json")
 
+
+def get_value_data(prices: dict, modifiers: dict, data: dict) -> None:
     print("Generating node values...")
-    values_file = os.path.join(datapath, "node_values_per_town.json")
-    values_sha_file = os.path.join(datapath, "values_hash.txt")
+    sha_filename = "values_hash.txt"
+    current_sha = ds.read_text(sha_filename) if ds.is_file(sha_filename) else None
 
-    encoded = json.dumps({"p": prices, "m": modifiers}, sort_keys=True).encode()
-    values_sha = hashlib.sha256(encoded).hexdigest()
+    encoded = json.dumps({"p": prices, "m": modifiers}).encode()
+    latest_sha = hashlib.sha256(encoded).hexdigest()
 
-    if not os.path.isfile(values_file) or not os.path.isfile(values_sha_file):
-        generate_value_data(datapath, prices, modifiers)
-        with open(values_sha_file, "w") as file:
-            file.write(values_sha)
+    if latest_sha == current_sha:
+        print("  ...re-using existing node values data.")
     else:
-        with open(values_sha_file, "r") as file:
-            prev_values_sha = file.read()
-        if prev_values_sha != values_sha:
-            generate_value_data(datapath, prices, modifiers)
-            with open(values_sha_file, "w") as file:
-                file.write(values_sha)
-        else:
-            print(" - re-using existing node values data.")
+        generate_value_data(ds.path(), prices, modifiers)
+        ds.path().joinpath(sha_filename).write_text(latest_sha)
 
-    with open(os.path.join(datapath, "node_values_per_town.json")) as datafile:
-        data["plant_values"] = json.load(datafile)
-
+    data["plant_values"] = ds.read_json("node_values_per_town.json")
     data["plants"] = data["plant_values"].keys()
     data["groups"] = data["plant_values"][list(data["plants"])[0]].keys()
     data["towns"] = [data["group_to_town"][w] for w in data["groups"]]
     data["max_ub"] = len(data["plants"])
 
+
+def get_lodging_data(lodging: dict, data: dict) -> None:
     print("Generating lodging data...")
     for group, lodgings in data["lodging_data"].items():
         if group not in data["groups"]:
@@ -67,4 +50,11 @@ def get_reference_data(datapath, prices, modifiers, lodging):
         data["lodging_data"][group]["max_ub"] = max_lodging
         data["lodging_data"][group]["lodging_bonus"] = lodging[townname]
 
+
+def generate_reference_data(config: dict, prices: dict, modifiers: dict, lodging: dict) -> dict:
+    data = {}
+    data["config"] = config
+    get_data_files(data)
+    get_value_data(prices, modifiers, data)
+    get_lodging_data(lodging, data)
     return data

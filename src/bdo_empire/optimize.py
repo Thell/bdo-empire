@@ -7,7 +7,7 @@ from pulp import HiGHS, LpVariable, lpSum, LpProblem, LpMaximize
 from bdo_empire.generate_graph_data import Arc, Node, NodeType as NT
 from bdo_empire.generate_graph_data import generate_graph_data
 from bdo_empire.generate_workerman_data import generate_workerman_data
-from bdo_empire.generate_reference_data import get_reference_data
+from bdo_empire.generate_reference_data import generate_reference_data
 
 
 def filter_arcs(v, groupflow, arcs):
@@ -147,9 +147,7 @@ def solve_par(prob, options_dict, config):
 
 
 def optimize(config, prices, modifiers, lodging, outpath):
-    datapath = os.path.join(os.path.dirname(__file__), "data")
-    ref_data = get_reference_data(datapath, prices, modifiers, lodging)
-    ref_data["config"] = config
+    ref_data = generate_reference_data(config, prices, modifiers, lodging)
     graph_data = generate_graph_data(ref_data)
 
     print(
