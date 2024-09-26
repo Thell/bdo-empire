@@ -57,7 +57,12 @@ def request_json_data_file(url, filename):
 
 
 def write_json_data_file(filename, data):
-    with get_data_dir().joinpath(filename).open("w") as data_file:
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError:
+            raise ValueError("Data is a string but not valid JSON")
+    with get_data_dir().joinpath(filename).open("w", encoding="utf-8") as data_file:
         json.dump(data, data_file, indent=4)
 
 
