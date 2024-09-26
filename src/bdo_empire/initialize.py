@@ -1,57 +1,94 @@
-# initialize_workerman_data.py
+# initialize.py
 
+import importlib.resources
 import json
-from os import makedirs, path
-from urllib import error, request
+from urllib import request
+
+workerman_data_filenames = [
+    # Used for node value generation
+    "distances_tk2pzk.json",
+    "plantzone.json",
+    "plantzone_drops.json",
+    "skills.json",
+    "worker_static.json",
+    # Used for empire data generation
+    "all_lodging_storage.json",
+    "deck_links.json",
+    "exploration.json",
+    "plantzone.json",
+]
+
+local_data_filenames = [
+    # Used for empire data generation
+    "town_node_translate.json",
+    "townnames.json",
+    "warehouse_to_townname.json",
+]
 
 
-def download_json_file(filename, outpath):
-    outpath = path.join(outpath, f"{filename}")
-    if filename in ["plantzone_drops.json", "skills.json"]:
-        filename = f"manual/{filename}"
-    raw_url = f"https://raw.githubusercontent.com/shrddr/workermanjs/refs/heads/main/data/{filename}"
-
-    try:
-        request.urlretrieve(raw_url, outpath)
-    except error.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
-        return False
-    except Exception as err:
-        print(f"An error occurred: {err}")
-        return False
-    return True
+def get_data_dir():
+    with importlib.resources.as_file(
+        importlib.resources.files("initialize").joinpath("data")
+    ) as data_dir:
+        return data_dir
 
 
-def get_last_commit_hash():
+def is_data_file(filename):
+    return get_data_dir().joinpath(filename).is_file()
+
+
+def request_content(url):
     import certifi
     import ssl
 
     context = ssl.create_default_context(cafile=certifi.where())
+    try:
+        with request.urlopen(url, context=context) as response:
+            content = response.read().decode("utf-8")
+    except Exception as e:
+        print(f"Error fetching content: {e}")
+        raise
+    return content
+
+
+def request_json_data_file(url, filename):
+    content = request_content(url)
+    write_json_data_file(filename, content)
+
+
+def write_json_data_file(filename, data):
+    with get_data_dir().joinpath(filename).open("w") as data_file:
+        json.dump(data, data_file, indent=4)
+
+
+def download_json_file(filename):
+    url = "https://raw.githubusercontent.com/shrddr/workermanjs/refs/heads/main/data"
+    if filename in ["plantzone_drops.json", "skills.json"]:
+        url = f"{url}/manual/{filename}"
+    else:
+        url = f"{url}/{filename}"
+    request_json_data_file(url, filename)
+
+
+def get_last_commit_hash():
     url = "https://api.github.com/repos/shrddr/workermanjs/branches/main"
-    with request.urlopen(url, context=context) as response:
-        data = json.load(response)
-        return data["commit"]["sha"]
+    content = request_content(url)
+    json_data = json.loads(content)
+    return json_data["commit"]["sha"]
 
 
-def extract_tk2tnk_from_js(outpath):
-    import json
+def extract_tk2tnk_from_js():
     import re
 
     url = "https://raw.githubusercontent.com/shrddr/workermanjs/refs/heads/main/src/stores/game.js"
-    try:
-        with request.urlopen(url) as response:
-            js_content = response.read().decode("utf-8")
-    except Exception as e:
-        print(f"Error fetching the file: {e}")
-        return False
+    js_content = request_content(url)
 
     # re to match the _tk2tnk dictionary
     dict_pattern = re.compile(r"this\._tk2tnk\s*=\s*{([^}]*)}", re.DOTALL)
     match = dict_pattern.search(js_content)
-    # Since shrddr's comments in the source indicating reading this from the bss in the future...
+    # Since shrddr's comment in game.js indicates reading this from the bss in the future...
     if not match:
-        print("Dictionary not found, check the source file!")
-        return False
+        raise ValueError("tk2tnk dictionary not found, check the game.js source file!")
 
     dict_content = match.group(1).strip()
     pair_pattern = re.compile(r"(\d+)\s*:\s*(\d+)")
@@ -63,132 +100,59 @@ def extract_tk2tnk_from_js(outpath):
             tk2tnk_dict[key] = str(value)
     tnk2tk_dict = {v: str(k) for k, v in tk2tnk_dict.items()}
 
-    out_dict = {"tk2tnk": tk2tnk_dict, "tnk2tk": tnk2tk_dict}
-    outpath = path.join(outpath, "town_node_translate.json")
-    with open(outpath, "w") as json_file:
-        json.dump(out_dict, json_file, indent=4)
-
-    return True
+    json_data = {"tk2tnk": tk2tnk_dict, "tnk2tk": tnk2tk_dict}
+    write_json_data_file("town_node_translate.json", json_data)
 
 
-def extract_town_names(outpath):
+def extract_town_names():
     url = "https://raw.githubusercontent.com/shrddr/workermanjs/refs/heads/main/data/loc.json"
-    try:
-        with request.urlopen(url) as response:
-            content = response.read().decode("utf-8")
-            json_data = json.loads(content)
-    except Exception as e:
-        print(f"Error fetching the file: {e}")
-        return False
-
+    json_content = request_content(url)
+    json_data = json.loads(json_content)
     json_data = json_data["en"]["town"]
-    outpath = path.join(outpath, "warehouse_to_townname.json")
-    with open(outpath, "w") as json_file:
-        json.dump(json_data, json_file, indent=4)
-
+    write_json_data_file("warehouse_to_townname.json", json_data)
     return json_data
 
 
-def generate_warehouse_to_town_names(filepath, town_names):
-    with open(f"{filepath}/town_node_translate.json", "r") as f:
-        translator = json.load(f)
-
-    out_dict = {}
-    for k, v in town_names.items():
-        out_dict[translator["tk2tnk"][k]] = v
-
-    outpath = path.join(filepath, "townnames.json")
-    with open(outpath, "w") as json_file:
-        json.dump(out_dict, json_file, indent=4)
+def generate_warehouse_to_town_names(town_names):
+    with open(get_data_dir().joinpath("town_node_translate.json"), "r") as data_file:
+        translator = json.load(data_file)
+    json_data = {translator["tk2tnk"][k]: v for k, v in town_names.items()}
+    write_json_data_file("townnames.json", json_data)
 
 
-def initialize_workerman_data(filepath, last_sha):
-    makedirs(filepath, exist_ok=True)
-
-    filelist = [
-        # Used for node value generation
-        "distances_tk2pzk.json",
-        "plantzone.json",
-        "plantzone_drops.json",
-        "skills.json",
-        "worker_static.json",
-        # Used for empire data generation
-        "all_lodging_storage.json",
-        "deck_links.json",
-        "exploration.json",
-        "plantzone.json",
-    ]
-    for filename in filelist:
+def initialize_workerman_data(last_sha):
+    for filename in workerman_data_filenames:
         print(f"Getting `{filename}`...", end="")
-        if download_json_file(filename, filepath):
-            print("complete.")
-        else:
-            print("failed.")
-            return False
+        download_json_file(filename)
+        print("complete.")
 
     print("Generating `town_node_translate.json`...", end="")
-    if extract_tk2tnk_from_js(filepath):
-        print("complete.")
-    else:
-        print("failed.")
-        return False
-
-    print("Extracting town name list...", end="")
-    town_names = extract_town_names(filepath)
-    if town_names:
-        print("complete.")
-    else:
-        print("failed.")
-        return False
-
-    print("Generating warehouse to town name list...", end="")
-    generate_warehouse_to_town_names(filepath, town_names)
+    extract_tk2tnk_from_js()
     print("complete.")
 
-    with open(path.join(filepath, "git_commit.txt"), "w") as file:
-        file.write(last_sha)
+    print("Extracting town name list...", end="")
+    town_names = extract_town_names()
+    print("complete.")
 
-    return True
+    print("Generating warehouse to town name list...", end="")
+    generate_warehouse_to_town_names(town_names)
+    print("complete.")
+
+    get_data_dir().joinpath("git_commit.txt").write_text(last_sha)
 
 
 def initialize():
-    filepath = path.join(path.dirname(__file__), "data")
-    filenames = [
-        # Used for node value generation
-        "distances_tk2pzk.json",
-        "plantzone.json",
-        "plantzone_drops.json",
-        "skills.json",
-        "worker_static.json",
-        # Used for empire data generation
-        "all_lodging_storage.json",
-        "deck_links.json",
-        "exploration.json",
-        "plantzone.json",
-        "town_node_translate.json",
-        "townnames.json",
-        "warehouse_to_townname.json",
-    ]
+    # Any error in initialization is fatal and is raised via urllib.
 
-    print(f"Checking workerman data files in {filepath}...")
+    print("Checking data files...")
 
+    filename = "git_commit.txt"
     last_sha = get_last_commit_hash()
-    filename = path.join(filepath, "git_commit.txt")
+    current_sha = get_data_dir().joinpath(filename).read_text() if is_data_file(filename) else None
+    all_data_filenames = workerman_data_filenames + local_data_filenames
 
-    if not path.isfile(filename):
-        print(filename, "does not exist.")
-        initialized = initialize_workerman_data(filepath, last_sha)
-    else:
-        with open(filename, "r") as file:
-            current_sha = file.read()
-        initialized = current_sha == last_sha
-        if not initialized:
-            print("Updating workerman data files...")
-            initialized = initialize_workerman_data(filepath, last_sha)
+    if last_sha != current_sha or not all(is_data_file(f) for f in all_data_filenames):
+        initialize_workerman_data(last_sha)
 
-    if initialized and not all([path.isfile(path.join(filepath, f)) for f in filenames]):
-        print("All required data files do not exist yet. Downloading...")
-        initialized = initialize_workerman_data(filepath, last_sha)
-
-    print("Initialized?", initialized)
-    return initialized
+    print("Initialized...")
+    return True

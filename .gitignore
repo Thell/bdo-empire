@@ -160,15 +160,3 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-src/bdo_empire/data/all_lodging_storage.json
-src/bdo_empire/data/deck_links.json
-src/bdo_empire/data/distances_tk2pzk.json
-src/bdo_empire/data/exploration.json
-src/bdo_empire/data/git_commit.txt
-src/bdo_empire/data/plantzone_drops.json
-src/bdo_empire/data/plantzone.json
-src/bdo_empire/data/skills.json
-src/bdo_empire/data/town_node_translate.json
-src/bdo_empire/data/townnames.json
-src/bdo_empire/data/warehouse_to_townname.json
-src/bdo_empire/data/worker_static.json
