@@ -140,6 +140,12 @@ def medianGoblin(tnk, data):
         return makeMedianChar(8050, data)  # lotml
     if tnk == 1795:
         return makeMedianChar(8050, data)  # lotml
+    if tnk == 1857:
+        return makeMedianChar(8050, data)  # lotml2
+    if tnk == 1858:
+        return makeMedianChar(8050, data)  # lotml2
+    if tnk == 1853:
+        return makeMedianChar(8050, data)  # lotml2
     return makeMedianChar(7572, data)
 
 
@@ -158,6 +164,12 @@ def medianGiant(tnk, data):
         return makeMedianChar(8058, data)  # lotml
     if tnk == 1795:
         return makeMedianChar(8058, data)  # lotml
+    if tnk == 1857:
+        return makeMedianChar(8058, data)  # lotml2
+    if tnk == 1858:
+        return makeMedianChar(8058, data)  # lotml2
+    if tnk == 1853:
+        return makeMedianChar(8058, data)  # lotml2
     return makeMedianChar(7571, data)
 
 
@@ -176,6 +188,12 @@ def medianHuman(tnk, data):
         return makeMedianChar(8054, data)  # lotml
     if tnk == 1795:
         return makeMedianChar(8054, data)  # lotml
+    if tnk == 1857:
+        return makeMedianChar(8054, data)  # lotml2
+    if tnk == 1858:
+        return makeMedianChar(8054, data)  # lotml2
+    if tnk == 1853:
+        return makeMedianChar(8054, data)  # lotml2
     return makeMedianChar(7573, data)
 
 
