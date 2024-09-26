@@ -11,7 +11,7 @@ import customtkinter as ctk
 from CTkToolTip import CTkToolTip as ctktt
 from psutil import cpu_count
 
-from bdo_empire.initialize import initialize
+from bdo_empire.initialize import initialize_data
 from bdo_empire.optimize import optimize
 
 solver_config = {
@@ -417,12 +417,7 @@ class EmpireOptimizerApp(ctk.CTk):
 
 
 def main():
-    import sys
-
-    if not initialize():
-        print("Error acquiring workerman data. Can not start.")
-        sys.exit(1)
-
+    initialize_data()
     app = EmpireOptimizerApp()
     app.mainloop()
 
