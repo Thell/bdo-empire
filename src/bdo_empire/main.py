@@ -3,7 +3,7 @@
 from enum import Enum
 import json
 from math import inf
-import os
+from pathlib import Path
 from random import randint
 from tkinter import DISABLED, NORMAL, filedialog
 
@@ -12,7 +12,11 @@ from CTkToolTip import CTkToolTip as ctktt
 from psutil import cpu_count
 
 from bdo_empire.initialize import initialize_data
+from bdo_empire.generate_graph_data import generate_graph_data
+from bdo_empire.generate_reference_data import generate_reference_data
+from bdo_empire.generate_workerman_data import generate_workerman_data
 from bdo_empire.optimize import optimize
+
 
 solver_config = {
     "num_processes": max(1, cpu_count(logical=False) - 1),
@@ -307,7 +311,7 @@ class EmpireOptimizerApp(ctk.CTk):
         return status
 
     def validate_prices(self, file_path):
-        if os.path.isfile(file_path):
+        if Path(file_path).is_file():
             self.prices_state = WidgetState.Ready
             self.prices_status.configure(text=self.prices_state.name, text_color="green")
         else:
@@ -317,7 +321,7 @@ class EmpireOptimizerApp(ctk.CTk):
         self.update_optimize_button_state()
 
     def validate_modifiers(self, file_path):
-        if os.path.isfile(file_path):
+        if Path(file_path).is_file():
             self.modifiers_state = WidgetState.Ready
             self.modifiers_status.configure(text=self.modifiers_state.name, text_color="green")
         else:
@@ -327,7 +331,7 @@ class EmpireOptimizerApp(ctk.CTk):
         self.update_optimize_button_state()
 
     def validate_outpath(self, file_path):
-        if os.path.exists(file_path):
+        if Path(file_path).exists():
             self.outpath_state = WidgetState.Ready
             self.outpath_status.configure(text=self.outpath_state.name, text_color="green")
         else:
@@ -399,19 +403,25 @@ class EmpireOptimizerApp(ctk.CTk):
         config["waypoint_ub"] = 25
         config["solver"] = solver_config
 
-        with open(self.prices_entry.get(), "r") as file:
-            prices = json.load(file)["effectivePrices"]
-
-        if self.modifiers_entry.get():
-            with open(self.modifiers_entry.get(), "r") as file:
-                modifiers = json.load(file)["regionModifiers"]
-        else:
-            modifiers = {}
-
         lodging = purchased_lodging
-        outpath = self.outpath_entry.get()
+        prices = json.loads(Path(self.prices_entry.get()).read_text())["effectivePrices"]
+        modifiers = (
+            json.loads(Path(self.modifiers_entry.get()).read_text())["regionModifiers"]
+            if self.modifiers_entry.get()
+            else {}
+        )
 
-        optimize(config, prices, modifiers, lodging, outpath)
+        data = generate_reference_data(config, prices, modifiers, lodging)
+        graph_data = generate_graph_data(data)
+        prob = optimize(data, graph_data)
+        workerman_json = generate_workerman_data(prob, lodging, data, graph_data)
+
+        outpath = Path(self.outpath_entry.get())
+        outfile = outpath.joinpath("optimized_empire.json")
+        with open(outfile, "w") as json_file:
+            json.dump(workerman_json, json_file, indent=4)
+        print("workerman json written to:", outfile)
+        print("Completed.")
 
         self.optimize_state = WidgetState.Waiting
         self.optimize_status.configure(text=self.optimize_state.name)
