@@ -1,6 +1,4 @@
-"""Empire Graph Data Generation
-Generate the arcs and nodes used for MIP solver problem creation.
-"""
+# generate_graph.data.py
 
 from __future__ import annotations
 from enum import IntEnum, auto
