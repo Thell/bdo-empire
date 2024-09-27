@@ -173,6 +173,7 @@ class EmpireOptimizerApp(ctk.CTk):
         lodging_window = ctk.CTkToplevel(self)
         lodging_window.title("Purchased Lodging Setup")
         lodging_window.geometry("430x600")
+        lodging_window.grab_set()
 
         scrollable_frame = ctk.CTkScrollableFrame(lodging_window, width=400, height=500)
         scrollable_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
@@ -358,6 +359,7 @@ class EmpireOptimizerApp(ctk.CTk):
         config_window = ctk.CTkToplevel(self)
         config_window.title("Solver Configuration")
         config_window.geometry("400x250")
+        config_window.grab_set()
 
         self.config_entries = {}
         row = 0
