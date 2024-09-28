@@ -1,6 +1,6 @@
 [project]
 name = "bdo-empire"
-version = "0.1.3"
+version = "0.1.4"
 description = "Worker empire optimizer for BDO using HiGHS mip solver."
 authors = [
     {name = "Thell 'Bo' Fowler", email = "thell@tbfowler.net"},
