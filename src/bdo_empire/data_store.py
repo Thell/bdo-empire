@@ -7,9 +7,7 @@ from urllib import request
 
 
 def path() -> Path:
-    with importlib.resources.as_file(
-        importlib.resources.files("initialize").joinpath("data")
-    ) as path:
+    with importlib.resources.as_file(importlib.resources.files().joinpath("data")) as path:
         return path
 
 
