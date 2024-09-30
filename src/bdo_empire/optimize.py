@@ -82,6 +82,19 @@ def create_problem(config: dict, G: GraphData) -> LpProblem:
             prob += lpSum(in_neighbors) + lpSum(out_neighbors) - 2 * node.vars["x"] >= 0
         prob += lpSum(out_neighbors) >= node.vars["x"]
 
+    # Edge case handling.
+    # If group 619 is active it must be connected to a near town.
+    # There are three connection paths to select from...
+    connect_sets = [[1321, 1327, 1328, 1329, 1376], [1321, 1327, 1328, 1329, 1330, 1375], [1339]]
+    connect_vars = []
+    for i, connect_set in enumerate(connect_sets):
+        x = LpVariable(f"x_group_619_connect_{i}", 0, 1, "Binary")
+        connect_vars.append(x)
+        prob += (
+            lpSum([G["V"][f"waypoint_{wp}"].vars["x"] for wp in connect_set]) >= len(connect_set) * x
+        )
+    prob += lpSum(connect_vars) >= G["V"]["group_619"].vars["x"]
+
     return prob
 
 

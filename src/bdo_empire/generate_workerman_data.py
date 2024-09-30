@@ -116,8 +116,8 @@ def extract_solution(prob) -> tuple[dict, dict, dict]:
             lodging_vars[k.replace("flow_", "")] = v
         elif "_on_plant_" in k:
             origin_vars[k.split("_")[4]] = k.split("_")[1]
-        elif k.startswith("flow_waypoint") and "_to_" not in k:
-            waypoint_vars[k.replace("flow_", "")] = v
+        elif k.startswith("x_waypoint") or k == "x_town_1343":
+            waypoint_vars[k.replace("x_", "")] = v
     return lodging_vars, origin_vars, waypoint_vars
 
 
@@ -197,6 +197,9 @@ def generate_workerman_data(
         "origins": origin_cost,
         "waypoints": sum(graph_data["V"][k].cost for k in waypoint_vars.keys()),
     }
+
     print_summary(outputs, counts, costs, calculated_value)
+    if "town_1343" in waypoint_vars.keys():
+        print("Ancado Inner Harbor active (cost 1) and included with waypoints.")
 
     return workerman_json
