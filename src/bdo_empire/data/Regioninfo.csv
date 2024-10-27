@@ -1,0 +1,1447 @@
+Param0,String
+1,Test Zone
+2,Sea
+3,Balenos Bay
+4,Balenos Plains
+5,Velia
+6,Agris Steppe
+7,Altar of Agris
+8,Fleme Hills
+9,Western Guard Camp
+10,Forest of Seclusion
+11,Balenos Forest
+12,Forest of Plunder
+13,Ehwaz Hill
+14,Cron Castle Site
+15,Cron Castle
+16,Bartali Farm
+17,Finto Farm
+18,Loggia Farm
+19,Marino Farm
+20,Toscani Farm
+21,DelLucci Farm
+22,Fiazza Farm Ruins
+23,Ossuary
+24,Coastal Cave
+25,Imp Cave
+26,Ancient Stone Chamber
+27,Balenos Mountains
+28,Heidel Pass
+29,Mountain Sheep Summit
+30,Heidel Castle
+31,Northern Guard Camp
+32,Heidel
+33,Northern Heidel Quarry
+34,King's Forest
+35,Northern Plain of Serendia
+36,Eastern Border
+37,Glish Swamp
+38,Demi Riverbank
+39,Demi River
+40,Southern Plain of Serendia
+41,Wizard's Altar
+42,Grain Belt
+43,Southern Mountain Range
+44,Western Cliff
+45,Northern Neutral Zone
+46,Southern Neutral Zone
+47,Central Neutral Zone
+48,Sanctuary Valley Path
+49,Naga Marsh
+50,Fogan Marsh
+51,Extraction Mill
+52,Glish
+53,Glish Ruins
+54,Northern Swamp
+55,Southern Swamp
+56,Central Guard Camp
+57,Southern Guard Camp
+58,Northwestern Gateway
+59,Eastern Gateway
+60,Alejandro Farm
+61,Costa Farm
+62,Moretti Plantation
+63,Lynch Farm Ruins
+64,Dernyl Farm
+65,Elda Farm
+66,Rugged Southern Mountain Range
+67,Bloody Monastery
+68,Monastery Riverhead
+69,Death's Pilgrimage
+70,Serendia Shrine
+71,Castle Ruins
+72,Watchtower
+73,Biraghi Den
+74,Orc Camp
+75,Bradie Fortress
+76,Southern Mountain Range
+77,Calpheon City
+78,Desert Region
+79,Other Regions
+80,Calpheon Territory
+81,Second Territory
+82,Third Territory
+83,Fifth Territory
+84,Southwestern Gateway
+85,Helms Post
+86,Western Balenos Highlands
+87,Coastal Cliff
+88,Olvia
+89,Elder's Bridge
+90,Foot of Terrmian Mountain
+91,Terrmian Cliff
+92,Olvia Coast
+93,Goblin Cave
+94,Toscani Farm
+95,Bartali Farm
+96,Marino Farm
+97,Finto Farm
+98,Cron Castle Site
+99,Balenos Plains
+100,Fleme Hills
+101,Ehwaz Hill
+102,Agris Steppe
+103,Heidel Pass
+104,Coastal Cliff
+105,Balenos River
+106,Lynch Ranch
+107,Keplan
+108,Rugged Mountain Range
+109,Mountainous Area
+110,Marni Cave Path
+111,Dane Canyon
+112,Saunil Camp
+113,Hexe Sanctuary
+114,Faust Forest
+115,Lumbering 1
+116,Lumbering 2
+117,Primal Giant Post
+118,North Quarry
+119,Florin
+120,Port Epheria
+121,Refugee Camp
+122,Northern Wheat Plantation
+123,Calpheon Castle
+124,Lake Kaia
+125,Behr
+126,Trent
+127,Trina Fort
+128,Glutoni Cave
+129,Marni's Lab
+130,Trina Beacon Towers
+131,Upper Demi River
+132,Fogan Marsh
+133,Southern Mountain Range Brook
+134,Ossuary
+135,Coastal Cave
+136,Imp Cave
+137,Ancient Stone Chamber
+138,Goblin Cave
+139,Serendia Shrine
+140,Valley Cave
+141,Veiled Labyrinth
+142,Secret Cave
+143,Secret Cave
+144,Secret Cave
+145,Secret Cave
+146,Secret Cave
+147,Secret Cave
+148,Secret Cave
+149,Secret Cave
+150,Secret Cave
+151,Secret Cave
+152,Secret Cave
+153,Balenos Mountains
+154,Demi River
+155,Ancient Stone Chamber
+156,Battlefield of Honor
+167,Watchtower Underground Cave
+168,Secret Cave
+169,Secret Cave
+170,Secret Cave
+171,Basement Cellar
+172,Basement Cellar
+173,Soldiers' Tombs (Rugged Southern Mountain Range)
+174,UnKnown
+175,Deep Sea
+176,Bandit's Den Byway
+177,Southern Mountain Range Riverhead
+178,Southern Mountain Range
+179,Neutral Zone Brook
+180,King's Forest
+181,Lema Island
+182,Iliya Island
+183,Old Dandelion
+184,Bree Tree Ruins
+185,Abandoned Land
+186,Quint Hill
+187,Delphe Knights Castle
+188,Delphe Outpost
+189,Khuruto Cave
+190,Caphras Cave
+191,Ruins Underground
+192,Waragon Cave
+193,Karanda Ridge
+194,Anti-Troll Fortification
+195,Waragon-Infested Area
+196,Balenos Mountains
+197,Contaminated Farm
+198,Khuruto Cave
+199,Caphras Cave
+200,Ruins Underground
+201,Keplan Quarry
+202,Altinova
+203,Mediah Northern Highlands
+204,Stonebeak Shore
+205,Abun
+206,Rumbling Land
+207,Stonetail Wasteland
+208,Stonetail Horse Ranch
+209,Asula Highlands
+210,Canyon of Corruption
+211,Abandoned Iron Mine
+212,Omar Lava Cave
+213,Manes Hideout
+214,Wandering Rogue Den
+215,Tungrad Forest
+216,Hasrah Cliff
+217,Alumn Rock Valley
+218,Asparkan
+219,Small Island
+220,Fort Barran
+221,Tarif
+222,Kamasylve Temple
+223,Junaid River
+224,Mediah Castle
+225,Southern Mediah
+226,Mediah Mountains
+227,Amphitheater
+228,Amphitheater
+229,Valencia City
+230,The Great Desert of Valencia (Black Desert)
+231,Rock Belt (Desert 2 Region)
+232,Gateway 1
+233,Red Desert
+234,Gateway 3
+235,Gateway 4
+236,Altinova Gateway
+237,North Abandoned Quarry
+238,Keplan Hill
+239,Oze Pass
+240,Epheria Sentry Post
+241,Bashim Base
+242,Boulder Intersection
+243,Taphtar Plain
+244,Kzarka Priests Region
+245,Atumach
+246,Western Gateway
+247,Calpheon Castle Site
+248,Abandoned Quarry
+249,Cyclops Land
+250,Treant Forest
+251,South Kaia Mountain
+252,North Kaia Mountain
+253,Rhutum Outstation
+254,Abandoned Monastery
+255,Kaia River
+256,Rhutum Sentry Post
+257,Slum Church
+258,Holy College of Calpheon
+259,Kalis Plaza
+260,Calpheon Demi River Zone
+261,Troll Watchtower
+262,Cohen Farm
+263,Elder's Bridge Post
+264,Epheria Valley
+265,Quint Plain
+266,Southern Wheat Farm
+267,Falres Dirt Farm
+268,Hexe Stone Wall
+269,Gehaku Plain
+270,Tarte Rock Fork
+271,Beacon Entrance Post
+272,Saunil Battlefield
+273,Oberen Farm
+274,Bain Farmland
+275,Gianin Farm
+276,Riverside Farm
+277,Quarry Byway
+278,Keplan Vicinity
+279,Serendia Western Gateway
+280,Oze's House
+281,Hill Path
+282,Behr Riverhead
+283,South Kaia Pier
+284,Catfishman Camp
+285,Calpheon Castle Western Forest
+286,Lake Kaia
+287,Lumberjack's Rest Area
+288,Tobare's Cabin
+289,Mansha Forest
+290,Longleaf Tree Sentry Post
+291,North Kaia Pier
+292,Phoniel's Cabin
+293,Phoniel's Cabin Entrance
+294,Rhua Tree Stub
+295,Behr Downstream
+296,Marie Cave
+297,Witch's Chapel
+298,Calpheon Plain
+299,Crioville
+300,Gabino Farm
+301,Calpheon Market
+302,Abandoned Monastery
+303,Kzarka Shrine
+304,Longleaf Tree Forest Cave
+305,Glutoni Cave
+306,North Quarry
+307,Secret Cave
+308,Southern Mountain Range
+309,Balenos Mountains
+310,Calpheon City Trade Zone
+311,Calpheon Market Trade Zone
+312,Calpheon Holy College Trade Zone
+313,Bernianto Farm
+314,Longleaf Tree Forest
+315,Keplan Extraction Mill
+316,Epheria Bay
+317,Kzarka Shrine
+318,Moretti Plantation
+319,Northern Wheat Plantation
+320,Velia Duel Arena
+321,Heidel Duel Arena
+322,Calpheon Duel Arena
+323,Balenos Sea
+324,Epheria Sea
+325,Marni Farm Ruins
+326,Serene Spring
+327,Sausan Garrison
+328,The Mausoleum
+329,Sarma Outpost
+330,Marni's 2nd Lab
+331,Abun Outpost
+332,Helms Post
+333,Ancient Fissure
+334,Ancient Ruins Excavation Site
+335,Shuri Farm
+336,Ahto Farm
+337,Elric Shrine
+338,Kusha
+339,Kasula Farm
+340,Wuxi Farm Ruins
+341,Mediah Northern Gateway
+342,Altinova Entrance
+343,Wolf Hills
+344,Balenos River Mouth
+345,Mask Owl's Forest
+346,Olvia Foothills
+347,Epheria Ridge
+348,Olvia Hill
+349,Casta Farm
+350,Wale Farm
+351,Florin Gateway
+352,Balenos Islands
+353,Nox Sea
+354,Olvia Sea
+355,Cron Islands
+356,Arsha Sea
+357,Epheria Sea
+358,Ahrmo Sea
+359,Peyon Sea
+360,Banto Sea
+361,Zenato Sea
+362,Mediah Sea
+363,Altinova Sea
+364,Marlene Island
+365,Balvege Island
+366,Angie Island
+367,Duch Island
+368,Eveto Island
+369,Luivano Island
+370,Fribancy Island
+371,Mariveno Island
+372,Ephde Rune Island
+373,Invernen Island
+374,Tulu Island
+375,Orffs Island
+376,Tashu Island
+377,Baremi Island
+378,Weita Island
+379,Paratama Island
+380,Kanvera Island
+381,Arakil Island
+382,Beiruwa Island
+383,Taramura Island
+384,Ostra Island
+385,Delinghart Island
+386,Pilava Island
+387,Racid Island
+388,Al-Naha Island
+389,Ajir Island
+390,Pujara Island
+391,Lisz Island
+392,Narvo Island
+393,Marka Island
+394,Louruve Island
+395,Staren Island
+396,Randis Island
+397,Serca Island
+398,Daton Island
+399,Netnume Island
+400,Oben Island
+401,Eberdeen Island
+402,Dunde Island
+403,Albresser Island
+404,Barater Island
+405,Ginburrey Island
+406,Rameda Island
+407,Theonil Island
+408,Modric Island
+409,Baeza Island
+410,Teyamal Island
+411,Highland Junction
+412,Mediah Shore
+413,Omar Lava Cave
+414,Splashing Point
+415,Sausan Garrison Wharf
+416,Racetrack
+417,Soldier's Cemetery
+418,Gavinya Great Crater
+419,Gavinya Coastal Cliff
+420,Roud Sulfur Works
+421,Ivory Wasteland
+422,Ivero Cliff
+423,Valencia Sea
+424,Lohan's Villa
+425,Inaha's Villa
+426,Atosa's Villa
+427,Dudora's Villa
+428,Oberin's Villa
+429,Dona Rocky Mountain
+430,Hakoven Island
+431,Scarlet Sand Chamber
+432,Kuit Strait
+433,Arena of Arsha
+434,Iliya Island
+435,Savage Rift
+436,Battle Arena
+437,Battle Arena
+438,Terrmian Beach
+439,Terrmian Beach
+440,Terrmian Beach
+441,Terrmian Beach
+442,Terrmian Beach
+444,Velia Beach
+501,Epheria Ridge
+502,Balenos River Mouth
+503,Olvia Coast
+504,Terrmian Cliff
+505,Cliff Road
+506,Western Cliff
+507,Central Neutral Zone
+508,Southern Neutral Zone
+509,Northern Neutral Zone
+510,King's Forest
+511,Demi Riverbank
+512,Naga Marsh
+513,Fogan Marsh
+514,Southern Mountain Range
+515,North Kaia Mountain
+516,Epheria Valley
+517,Abandoned Land
+518,Quint Hill
+519,Northern Wheat Plantation
+520,Bree Tree Ruins
+521,Old Dandelion
+522,Treant Forest
+523,Mansha Forest
+524,Longleaf Tree Forest
+525,Hexe Sanctuary
+526,Marni's Lab
+527,Riverside Farm
+528,Saunil Camp
+529,Hill Path
+530,North Abandoned Quarry
+531,Primal Giant Post
+532,Keplan Hill
+533,Mediah Northern Highlands
+534,Rumbling Land
+535,Mediah Shore
+536,Asula Highlands
+537,Abandoned Iron Mine
+538,Abandoned Monastery Cave
+539,Kzarka Shrine Cave
+540,Mediah Castle
+541,Sausan Islands
+542,Marni's 2nd Lab Basement Cellar
+543,Secret Cave
+544,Secret Cave
+545,Secret Cave
+546,Secret Cave
+547,Secret Cave
+548,Secret Cave
+549,Secret Cave
+550,Secret Cave
+551,Ruins Cave
+552,Hasrah Ancient Ruins
+553,Mediah Castle
+554,Omar Lava Cave
+555,Abandoned Iron Mine Rhutum District
+556,Abandoned Iron Mine Saunil District
+557,Abandoned Iron Mine Entrance
+558,Awakening Bell
+559,Evergart Falls
+560,Altinova Arena
+561,Dias Farm
+562,Kuit Islands
+563,Almai Island
+564,Padix Island
+565,Teste Island
+566,Arita Island
+567,Abandoned Mine
+568,Cox Pirates' Lair
+569,Eltro Sea
+570,Tinberra Island
+571,Lerao Island
+572,Portanen Island
+573,Shasha Island
+574,Rosevan Island
+575,Feltron Island
+576,Altinova Arena Waiting Room
+577,Rock Post
+578,Gorgo Rock Belt
+579,Cadry Ruins
+580,Veteran's Canyon
+581,Kunid's Shelter
+582,Valencia Western Highlands
+583,Leical Grand Canyon
+584,Pila Fe
+585,Pujiya Canyon
+586,Waragon Nest
+587,Rock Post
+588,Kuzas Inner Harbor
+589,Kisleev Crag
+590,Shakatu's Territory
+591,Yalt Canyon
+592,Kmach Canyon
+593,Deserted City of Runn
+594,Runn Gateway Intersection
+595,Leical Falls
+596,Capotia
+597,Al Halam Sea
+598,Pilgrim's Haven
+599,Valencia Southwestern Mountains
+600,Talid Plain
+601,Shakatu
+602,Hope Pier
+603,Gahaz Bandits' Lair
+604,Bambu Valley
+605,Sand Grain Bazaar
+606,Closed Dungeon
+607,Desert Naga Temple
+608,Ibellab Oasis
+609,Pilgrim's Sanctum: Obedience
+610,Pilgrim's Sanctum: Abstinence
+611,Pilgrim's Sanctum: Sharing
+612,Pilgrim's Sanctum: Sincerity
+613,Pilgrim's Sanctum: Humility
+614,Pilgrim's Sanctum: Purity
+615,Pilgrim's Sanctum: Fast
+616,Rakshan Observatory
+617,Valencia Castle
+618,Aakman
+619,Ancado Inner Harbor
+620,Katan Military
+621,Ruba Gateway
+622,Crescent Shrine
+623,Titium Valley
+624,Ancient Dungeon (Temporary)
+625,Crescent Mountains
+626,Iris Canyon
+627,Altinova Gateway
+628,Rock Post (NONE)
+629,Pila Fe
+630,Gorgo Rock Belt
+631,Cadry Ruins
+632,Basilisk Den
+633,Barhan Gateway
+634,Abandoned Pier
+635,Expedition Camp
+636,Bazaar Farmland
+637,Shakatu Farmland
+638,Altas Farmland
+639,Erdal Farm
+640,Valencia Plantation
+641,Fohalam Farm
+642,Kunid's Villa
+643,Karashu's Villa
+644,Amir's Villa
+646,Shakatu's Villa
+647,Alsabi's Villa
+648,Muna's Villa
+649,Gahaz's Villa
+650,Marzana's Villa
+651,Talia's Villa
+652,Kiyak's Villa
+653,Tasaila's Villa
+654,Shandi's Villa
+655,Basilisk Cave
+656,Hope Pier Coastal Cave
+657,Centaurus Cave
+658,Caphras Secret Base
+659,Cokro Chamber
+660,Desert Cave
+661,Palm Tree Forest
+662,Sokota Island
+663,Riyed Island
+664,Esfah Island
+665,Tigris Island
+666,Shirna Island
+667,Halmad Island
+668,Kashuma Island
+669,Orisha Island
+671,Boa Island
+672,Valencia Arena
+673,Valencia Castle Site
+674,Pujiya Canyon
+675,Kisleev Crag
+676,Shakatu's Territory
+677,Yalt Canyon
+678,Gahaz Bandits' Lair
+679,Oasis of Dreams
+680,Oasis of Time
+681,Oasis of Blessings
+682,Ancado Coast
+683,Rock Post
+684,Outer Valencia City
+685,Derko Island
+686,Gavinya Volcano Zone
+687,Shakatu Abandoned Pier
+688,Aakman Temple
+689,Hystria Ruins
+690,Roud Sulfur Mine
+691,Pila Ku Jail
+692,Areha Palm Forest
+693,Arehaza
+694,Muiquun
+695,Central Cantusa
+696,Cantusa Desert
+697,Jail
+698,Northern Sand Dune
+699,Southern Sand Dune
+701,Kamasylvia
+702,Kamasylvia Vicinity
+703,Lemoria Guard Post
+704,Caduil Forest
+705,Atanis Pond
+706,Old Wisdom Tree
+707,Shady Tree Forest
+708,Navarn Steppe
+709,Navarn Springs
+710,Central Lemoria Camp
+711,Manshaum Forest
+712,Mirumok Ruins
+713,Holo Forest
+714,Lemoria Beacon Towers
+715,Atanis Waterway
+716,Atanis Stream
+717,Valtarra Mountains
+718,Valtarra - Altar of Training
+719,Viv Foretta Hamlet
+720,Okiara River Downstream
+721,Caduil Forest Path
+722,Mirumok Ruins Entrance
+723,Manshaum Forest Path
+724,Kamasylvia Castle
+725,Kamasylvia Vicinity
+726,Shady Tree Forest Path
+727,Acher Guard Post
+728,Loopy Tree Forest
+729,Tooth Fairy Forest
+730,Tooth Fairy Cabin
+731,Lake Flondor
+732,White Tree Forest
+733,Okiara River
+734,Kamasylve
+735,Grána
+736,Polly's Forest
+737,Weenie Cabin
+738,Looney Cabin
+739,Gyfin Rhasia Temple
+740,Southern Kamasylvia
+741,Western Valtarra Mountains
+742,Yianaros's Field
+743,Ash Forest
+744,Krogdalo's Trace
+745,Tooth Fairy Forest
+746,Loopy Tree Forest
+747,Polly's Forest
+748,White Tree Forest
+749,Southern Kamasylvia
+750,Grána
+751,Lake Flondor
+752,Western Valtarra Mountains
+753,Ash Forest
+754,Tulid's Cave
+755,Gyfin Rhasia Temple
+756,Acher Western Camp
+757,Acher Southern Camp
+801,The Red Battlefield
+806,Vadabin Sea
+807,Nada Island
+808,Mariul Island
+809,Zagam Island
+820,Oquilla's Eye
+821,Port Ratt
+822,Margoria
+823,Margoria
+824,Margoria
+825,Margoria
+826,Margoria
+827,Margoria
+828,Margoria
+829,Margoria
+830,Margoria
+831,Margoria
+832,Margoria
+833,Margoria
+834,Margoria
+835,Margoria
+836,Margoria
+837,Margoria
+838,Margoria
+839,Margoria
+840,Margoria
+841,Margoria
+842,Margoria
+843,Margoria
+844,Margoria
+845,Margoria
+846,Margoria
+847,Margoria
+848,Margoria
+849,Margoria
+850,Juur Sea
+851,Juur Sea
+852,Juur Sea
+853,Juur Sea
+854,Juur Sea
+855,Juur Sea
+856,Juur Sea
+857,Vadabin Sea
+858,Vadabin Sea
+859,Vadabin Sea
+860,Vadabin Sea
+861,Vadabin Sea
+862,Vadabin Sea
+863,Vadabin Sea
+864,Ross Sea
+865,Ross Sea
+866,Ross Sea
+867,Ross Sea
+868,Ross Sea
+869,Ross Sea
+870,Ross Sea
+871,Margoria (Vell's Realm)
+872,UnKnown
+873,Duvencrune
+874,Duvencrune Farmland
+875,Sherekhan Necropolis
+876,Blood Wolf Settlement
+877,Garmoth's Nest
+878,Kiernak Falls
+879,Ahib Conflict Zone
+880,Duvencrune
+881,Khalk Canyon
+882,Akum Rocky Mountain
+883,Harak's Shelter
+884,Morning Fog Peak
+885,Night Crow Post
+886,Night Crow Hill
+887,Windy Peak
+888,Morning Fog Post
+889,Night Crow Ruins
+890,Duvencrune Mountain
+891,Doroter Hills
+892,Tuir Valley
+893,Fountain of Origin
+894,Hoom Highland
+895,Tshira Ruins
+896,Sherekhan Mine Road
+897,Khimut Great Forest
+898,Khimut Lumber Camp
+899,Macalod Hill
+900,Marcha Outpost
+901,Gayak Altar
+902,Gervish Mountains
+903,Marak Farm
+904,Forgotten Gateway
+905,Dormann Lumber Camp
+906,Doroter Hills
+907,Khalk Canyon
+908,Doroter Hills
+909,Sherekhan Necropolis
+910,Fountain of Origin
+911,Morning Fog Peak
+912,Kiernak Falls
+913,Duvencrune Mountain
+914,Garmoth's Nest
+915,Gervish Mountains
+916,Tshira Ruins
+917,Blood Wolf Settlement
+918,Doroter Hills
+919,Blood Wolf Settlement
+920,Khalk Canyon
+921,Ahib Conflict Zone
+922,Akum Rocky Mountain
+923,Doroter Hills
+924,Marcha Outpost
+925,Tuir Valley
+926,Duvencrune Farmland
+927,Sherekhan Necropolis
+928,Hoom Highland
+929,Sherekhan Mine Road
+930,Blood Wolf Settlement
+931,Night Crow Hill
+932,Garmoth's Nest
+933,Windy Peak
+934,Tshira Ruins
+935,Khimut Great Forest
+936,Dormann Lumber Camp
+937,Gervish Mountains
+938,Khimut Lumber Camp
+939,Marroba River
+940,Macalod Lake
+941,Tuir River
+942,Tuir River Downstream
+943,Fountain of Origin
+944,Khimut Lumber Camp
+945,Dormann Lumber Camp
+946,Macalod Hill
+947,Ellie's Mystical Lake
+948,Protty Cave
+949,Sycraia Underwater Ruins
+950,Pit of the Undying
+951,Bloody Monastery
+952,Sycraia Underwater Ruins
+953,Kzarka Shrine
+954,Corridor of Chaos
+955,O'draxxia
+956,O'dyllita Castle
+957,La O'delle
+958,Olun's Valley
+959,Black Mountains
+960,Narcion
+961,Bahit Sanctum
+962,Thornwood Forest
+963,Crypt of Resting Thoughts
+964,O'dyllita Castle Vicinity
+965,Talibahr's Rope
+966,Starry Midnight Port
+967,Tunkuta
+968,Salun's Border
+969,Calpheon Northwestern Outpost
+970,Northwestern Calpheon
+971,Star's End
+972,Brellin Farm
+973,Outpost Supply Port
+974,Mountain of Sanctity
+975,Calpheon Northwestern Outpost
+976,Northwestern Calpheon
+977,Star's End
+978,Brellin Farm
+979,Mountain of Sanctity
+980,Calpheon Northwestern Outpost
+981,Northwestern Calpheon
+982,Mountain of Sanctity
+983,Crow's Nest
+984,Oquilla's Eye
+985,Hall of Heroes
+986,Papua Crinea
+987,Queekity Thumpity Moon Village
+988,Serni Sea
+989,Elsana Sea
+990,Oquilla's Eye
+991,UnKnown
+992,Kratuga Ancient Ruins
+993,Sea of Silence
+994,Shipwrecked Haran's Cargo Ship
+995,Unfinished Adrift Vessel
+996,Lantinia's Combat Raft
+997,Pakio's Combat Raft
+998,Crow Merchants' Vessel
+999,Rickun's Shipwreck Boat
+1000,Oquilla's Eye
+1001,Shipwrecked Cox Pirate Ship
+1002,Shipwrecked Marine Vessel
+1003,Old Moon Guild Carrack
+1004,Shipwrecked Ancient Relic Cargo Ship
+1005,Cholace Chico's Pirate Union
+1006,Wandering Merchant Ship
+1007,Oquilla's Eye
+1008,Oquilla Coast
+1009,Thornwood Archive
+1010,Thornwood Prison
+1011,Talibahr's Cave
+1012,Narcion Cave
+1013,Tunkuta Cave
+1014,Grándiha
+1015,Wave's Rest
+1016,Papuraora Island
+1017,Garden of Birth
+1018,Crioniak Island
+1019,Bloodshed Beach
+1020,Coastal Cliff
+1021,Forgotten Mountain
+1022,Salanar Pond
+1023,Delmira Plantation
+1024,Mountain of Division
+1025,Shiv Valley Road
+1026,Altar of the Condemned
+1027,Walk of the Banished
+1028,Dead Moon Post
+1029,UnKnown
+1030,Bahit Sanctum
+1031,Zulatia Sea
+1032,Talibahr's Rope
+1033,Starry Midnight Port
+1034,Tunkuta
+1035,La O'delle
+1036,Narcion
+1037,Shiv Valley Road
+1038,O'draxxia
+1039,Delmira Plantation
+1040,Forgotten Mountain
+1041,Olun's Valley
+1042,Bahit Sanctum
+1043,Crypt of Resting Thoughts
+1044,Mountain of Division
+1045,Salun's Border
+1046,Salanar Pond
+1047,Thornwood Forest
+1048,Talibahr's Rope
+1049,Tunkuta
+1050,Salun's Border
+1051,Thornwood Forest
+1052,La O'delle
+1053,Narcion
+1054,Salanar Pond
+1055,Crypt of Resting Thoughts
+1056,Mountain of Division
+1057,Bahit Sanctum
+1058,Olun's Valley
+1059,Forgotten Mountain
+1060,Delmira Plantation
+1061,Shiv Valley Road
+1062,O'draxxia
+1063,Zulatia Sea
+1064,Shiv Valley Road
+1065,Al Halam Sea
+1066,UnKnown
+1067,Duvencrune
+1068,Blood Wolf Settlement
+1069,Tuir Valley
+1070,Pit of the Undying
+1071,Crow's Nest
+1072,Battle Arena
+1073,Lake Flondor
+1074,Tyrant's Hill
+1075,Foot of Terrmian Mountain
+1076,Protokea
+1077,Vaha's Query
+1078,Vaha's Cradle
+1079,Vaha's Paradise
+1080,Syca's Query
+1081,Syca's Cradle
+1082,Syca's Paradise
+1083,Yolu's Query
+1084,UnKnown
+1085,Atoraxxion
+1086,Vahmalkea
+1087,Sycrakea
+1088,Orzekea
+1089,Yolunakea
+1090,Vaha's Sky
+1091,Vaha's Storm
+1092,Vaha's Heart
+1093,Vaha's Head
+1094,Vaha's Garden
+1095,Blue Maned Lion's Manor
+1096,Slippery Scallywags Den
+1097,Syca's Scale
+1098,Syca's Scale
+1099,Syca's Grave
+1100,Syca's Throat
+1101,Syca's Glare
+1102,Syca's Garden
+1103,UnKnown
+1104,Demibeast Village Cave
+1105,Murrowak's Labyrinth
+1106,Murrowak's Labyrinth
+1107,Murrowak's Labyrinth
+1108,Murrowak's Labyrinth
+1109,Marni's Lab
+1110,Marni's Lab
+1111,Eilton
+1112,Erethea's Limbo
+1113,Pilgrim's End
+1114,Shrine of Silent Prayers
+1115,Derelict Trade Post
+1116,Sherekhan Iron Mine
+1117,Balacs Altar
+1118,Charbonneau Villa
+1119,Awina's Tail
+1120,Wind Nol's Perch
+1121,Erethea's Belt
+1122,Zvier Highlands
+1123,Bronte's Bolt
+1124,Eilton
+1125,Snowstorm Guard Post
+1126,Mountain of Eternal Winter
+1127,Jade Starlight Forest
+1128,Mountain Top Guard Post
+1129,Tori Woods
+1130,Maslan's Yulas Citron Orchard
+1131,Camp Balacs
+1132,Black Lake Encampment
+1133,Pilgrim's End
+1134,Shrine of Silent Prayers
+1135,Derelict Trade Post
+1136,Sherekhan Iron Mine
+1137,Balacs Altar
+1138,Charbonneau Villa
+1139,Awina's Tail
+1140,Wind Nol's Perch
+1141,Erethea's Belt
+1142,Zvier Highlands
+1143,Bronte's Bolt
+1144,Eilton
+1145,Snowstorm Guard Post
+1146,Mountain of Eternal Winter
+1147,Jade Starlight Forest
+1148,Mountain Top Guard Post
+1149,Tori Woods
+1150,Camp Balacs
+1151,Black Lake Encampment
+1152,Pilgrim's End
+1153,Shrine of Silent Prayers
+1154,Derelict Trade Post
+1155,Charbonneau Villa
+1156,Awina's Tail
+1157,Wind Nol's Perch
+1158,Erethea's Belt
+1159,Zvier Highlands
+1160,Bronte's Bolt
+1161,Eilton
+1162,Black Lake Encampment
+1163,Mountain of Eternal Winter
+1164,Jade Starlight Forest
+1165,Mountain Top Guard Post
+1166,Tori Woods
+1167,Wind Nol's Perch
+1168,Wind Nol's Perch
+1169,Charbonneau Charcoal Workshop
+1170,Charbonneau Charcoal Workshop
+1171,Charbonneau Charcoal Workshop
+1172,Path of Prophecy
+1173,Path of Prophecy
+1174,Haven of Slumbering Origin
+1175,Mountain of Eternal Winter
+1176,Mountain of Eternal Winter
+1177,Mountain of Eternal Winter
+1178,Mountain of Eternal Winter
+1179,Pilgrim's End
+1180,Pilgrim's End
+1181,Pilgrim's End
+1182,Pilgrim's End
+1183,Pilgrim's End
+1184,Shrine of Silent Prayers
+1185,Balacs Altar
+1186,Charbonneau Villa
+1187,Erethea's Belt
+1188,Wind Nol's Perch
+1189,Awina's Tail
+1190,Awina's Tail
+1191,Serene Spring
+1192,Orzekea
+1193,Yolunakea
+1194,Ruins of Tzol
+1195,Mountain of Eternal Winter
+1196,Cron Castle
+1197,Yolu's Nail
+1198,Yolu's Query
+1199,Yolu's Pupil
+1200,Yolu's Spine
+1201,Yolu's Mane
+1202,Yolu's Teeth
+1203,Yolu's Garden
+1204,Yolu's Tail
+1205,Yolu's Cradle
+1206,Yolu's Paradise
+1207,Terrmian Beach
+1208,The Great Desert of Valencia (Black Desert)
+1209,Land of the Morning Light
+1210,Dalbeol Village
+1211,Nampo's Moodle Village
+1212,Dalbeol Office
+1213,Honorable Choi House
+1214,Shimhyangje
+1215,Hanji County
+1216,Ojukheon
+1217,Shimnidae Forest
+1218,Nampo Gate
+1219,Nampo's Moodle Village
+1220,Nampo Shipyard
+1221,Donghae Office
+1222,Dami Pier
+1223,Nampo
+1224,Ooldool Strait
+1225,Solgaji Forest Beacon Tower
+1226,Solgaji Forest
+1227,Hamlet
+1228,Solbaram Neowa House
+1229,Cheongsan Institute
+1230,Soopmool in Ruins
+1231,Dokkebi Forest
+1232,Golden Pig Cave
+1233,Old Crane's Home
+1234,Sky Altar
+1235,Gowun Plateau
+1236,Dalim Village in Ruins
+1237,Drybranch Village
+1238,Bomnae County Beacon Tower
+1239,Bomnae County
+1240,Honglim Base
+1241,Yeowoo Pass Beacon Tower
+1242,Yeowoo Pass
+1243,Dallae Pier
+1244,Rosebay School
+1245,Nopsae Angler's Point
+1246,Nopsae's Byeot County
+1247,Nopsae Pass
+1248,Stone Island
+1249,Birigongdeoks' Home
+1250,Bari Forest
+1251,Old Owl's Home
+1252,Beombawi Tavern
+1253,Tigerslayers Base
+1254,Tiger Palace
+1255,Beombawi Valley
+1256,Beombawi Gate
+1257,Haemo Island
+1258,Byukgye Institute
+1259,Byukgye Island
+1260,Land of the Morning Light
+1261,Shimnidae Forest
+1262,Hanji County
+1263,Shimnidae Forest
+1264,Nampo Gate
+1265,Nampo's Moodle Village
+1266,Solgaji Forest
+1267,Cheongsan Institute
+1268,Dokkebi Forest
+1269,Golden Pig Cave
+1270,Gowun Plateau
+1271,Drybranch Village
+1272,Bomnae County
+1273,Honglim Base
+1274,Nopsae Pass
+1275,Bari Forest
+1276,Beombawi Valley
+1277,Beombawi Gate
+1278,Haemo Island
+1279,Shimnidae Forest
+1280,Solgaji Cave
+1281,Enlightenment Cave
+1282,Shinsun Grotto
+1283,Hanji Hollow
+1284,Ooldool Coastal Cave
+1285,Bomnae Coastal Cave
+1286,Small Yeowoo Cave
+1287,Honglim Cave
+1288,Humid Cave
+1289,Young Tiger's Den
+1290,Bari Forest
+1291,Traveller's Den
+1292,Dalbeol Cave
+1293,Nopsae Cave
+1294,Bari Cave
+1295,Haemo Coastal Cave
+1296,Seagrace Cave
+1297,Dokkebi Cave
+1298,Dokkebi Cave
+1299,Dokkebi Altar
+1300,Nampo Sea
+1301,Nopsae Sea
+1302,Hanji Shrine
+1303,Moon Grotto
+1304,Golden Pig Cave
+1305,Honglim Cave
+1306,Yeowoo Den
+1307,Yeowoo Cave
+1308,Hidden Bomnae Cave
+1309,Tiger Palace
+1310,Beombawi Cave
+1311,Beombawi Grotto
+1312,Land of the Morning Light
+1313,Hanji County
+1314,Shimnidae Forest
+1315,Solgaji Forest
+1316,Nopsae Pass
+1317,Beombawi Valley
+1318,Bari Forest
+1319,Chief's Home
+1320,Oduksini's Domain
+1321,Golden Pig Cave
+1322,The Great Desert of Valencia (Black Desert)
+1323,Shinhyang
+1324,Zulatia Sea
+1325,Elsana Sea
+1326,Serni Sea
+1327,Margoria
+1328,Margoria
+1329,Margoria
+1330,Margoria
+1331,Juur Sea
+1332,Vadabin Sea
+1333,Vadabin Sea
+1334,Vadabin Sea
+1335,Vadabin Sea
+1336,Vadabin Sea
+1337,Vadabin Sea
+1338,Juur Sea
+1339,Margoria
+1340,Margoria
+1341,Margoria
+1342,Margoria
+1343,Ross Sea
+1344,Valencia Sea
+1345,Sea Palace
+1346,Sea Palace
+1347,Atessahra
+1348,Sezec Mercenary Camp
+1349,City of the Dead
+1350,Tungrad Ruins
+1351,Asparkan Work Camp
+1352,Junaid River Border Post
+1353,Asparkan Bridge
+1354,Tremorin Hill
+1355,City of the Dead
+1356,Kermelun Wilds
+1357,Tomb of Forgotten Records
+1358,Asparkan
+1359,Asparkan
+1360,City of the Dead
+1361,Atessahra
+1362,Sezec Mercenary Camp
+1363,Tungrad Ruins
+1364,Tomb of Forgotten Records
+1365,Corpus Tomb
+1366,Cave of Lament
+1367,Neruda Plain
+1368,Junaid River
+1369,Neruda Plain
+1370,Tremorin Hill
+1371,Kermelun Wilds
+1372,Junaid River
+1373,Secirtash Prison
+1374,Atessahra
+1375,Muzgar
+1376,Aakshrad Mountains
+1377,Yzrahid Highlands
+1378,Darkseekers' Retreat
+1379,Karasi Canyon
+1380,Barhan Camp
+1381,Shakhtar Wilds
+1382,Velandir
+1383,Turba Farm
+1384,Larc Guard Post
+1385,Muzgar Black Stone Mine
+1386,Yzrahid Highlands Cave
+1387,Gladios Inn
+1388,Shakhtar Pier
+1389,Resh's Camp
+1390,Darkseekers' Retreat
+1391,Karasi Canyon
+1392,Barhan Camp
+1393,Turba Farm
+1394,Larc Guard Post
+1396,Gladios Inn
+1397,Lake Sefirah
+1398,Lake Sefirah - Upstream
+1399,Society of Equilibrium
+1400,Stofbir
+1401,Fris Snowfield
+1402,Aakshrad Mountains
+1403,Yzrahid Highlands
+1404,Shakhtar Wilds
+1405,Fris Snowfield
+1406,UnKnown
+1407,UnKnown
+1408,Bonghwang's Nest
+1409,Geogugwi Cave
+1410,Dungryong Cave
+1411,Secret Society
+1412,Namtaeryeong Gate
+1413,Hwasun Valley
+1414,Holbon
+1415,Wonjin Palace
+1416,Samsin Tree
+1417,UnKnown
+1418,Chowon Gardens
+1419,Seoul
+1420,Yukjo Street
+1421,Yuunru
+1422,Unjongga Street
+1423,Taehak
+1424,Godu Village
+1425,Godu Distillery
+1426,National Music Institution
+1427,Infirmary
+1428,Cloud Pier
+1429,Mongryong's Exile
+1430,UnKnown
+1431,Hyeollokdang
+1432,UnKnown
+1433,Dongmakgol Village
+1434,Flower-sunken Swamp
+1435,UnKnown
+1436,Myeonggyun Hall
+1437,Bae Muryong Residence
+1438,Mount Ahshi
+1439,UnKnown
+1440,Sky Altar
+1441,Byeolli Forest
+1442,Martial God Tournament
+1443,Seoryeon Corps
+1444,Bukpo
+1445,Dume Ridges
+1446,Dang Forest
+1447,Samsin Tree
+1448,Seoul
+1449,Dongmakgol Village
+1450,Byeolli Forest
+1451,Mount Ahshi
+1452,Bukpo
+1453,Howon Gate
+1454,UnKnown
+1455,UnKnown
+1456,UnKnown
+1457,UnKnown
+1458,UnKnown
+1459,UnKnown
+1460,UnKnown
+1461,UnKnown
+1462,UnKnown
+1463,UnKnown
+1464,UnKnown
+1465,UnKnown
+1466,UnKnown
+1467,UnKnown
+1468,UnKnown
+1469,Godu Village
+1470,Unjongga Street
+1471,Dume Ridges
+1472,Holbon
+1473,UnKnown
+1474,Godu Distillery
+1475,Geogugwi Cave
+1476,Samsin Tree
+1477,UnKnown
+1478,Dongmakgol Village
+1479,Dang Forest
+1480,Mount Ahshi
+1481,Byeolli Forest
+1482,Bukpo
+1483,Motgol Village
+1484,Gyeonghoeru Pavilion
+1485,Gyeongbokgung Palace
+1486,Seong Siwon's Residence
+1487,Dang Forest
+1488,Dume Ridges
+1489,Gwangalli
+1490,Gwangalli
+1491,Gwanghwamun Gate
+1492,Jang Daeseung's Residence
+1493,Central Command Headquarters
+1494,Royal Guard
+1495,Armory
+1496,Geunjeongjeon Hall
+1497,Sajeongjeon Hall
+1498,Gangnyeongjeon Hall
+1499,Gyotaejeon Hall
+1500,Amisan Garden
+1501,Jiphyeonjeon Hall
+1502,Special Advisory Bureau
+1503,Inspection Bureau
+1504,National Affairs Bureau
+1505,Royal Secretary's Office
+1506,Government Records Office
+1507,Gyujanggak Library
+1508,Palace Apothecary
+1509,Yeonguisa
+1510,Seonwonjeon Hall
+1511,Jaseondang
+1512,Inner Palace Kitchen
+1513,Outer Palace Kitchen
+1514,Refreshments Kitchen
+1515,Bihyeongak Office
+1516,Cheonchujeon Hall
+1517,Manchunjeon Hall
+1518,Gyeongseongjeon Hall
+1519,Eungjidang
+1520,Yeonsaengjeon Hall
+1521,Yeongildang
+1522,Heumgyeonggak Hall
+1523,Hamwonjeon Hall
+1524,Internal Affairs Bureau
+1525,Ministry of Culture
+1526,Ministry of War
+1527,Ministry of Law
+1528,Ministry of Works
+1529,Royal Investigation Bureau
+1530,State Council
+1531,Ministry of Administration
+1532,Ministry of Treasury
+1533,Cavern Cottage
+1534,Secret Society
+1535,Dungryong Cave
+1536,Geogugwi Cave
+1537,Bukpo Sea
+1538,Hwanghae
+1539,Taebaek Clan
+5000,UnKnown
+5001,UnKnown
+5002,UnKnown
+5003,UnKnown
+5004,UnKnown
+5005,UnKnown
+5006,UnKnown
+5007,UnKnown
+5008,UnKnown
+5009,UnKnown
+5010,UnKnown
+5011,UnKnown
+5012,UnKnown
+5013,UnKnown
+5014,UnKnown
+5015,UnKnown
+5016,UnKnown
+10000,UnKnown
+10001,UnKnown
+10002,UnKnown
+10003,UnKnown
+10004,UnKnown
+10005,UnKnown
+10006,UnKnown
+10007,UnKnown
+10008,UnKnown
+10009,UnKnown
+10010,UnKnown
+10011,UnKnown
+10012,UnKnown
+10013,UnKnown
+10014,UnKnown
+10015,UnKnown
+10016,UnKnown
+10050,UnKnown

@@ -9,14 +9,10 @@ from bdo_empire.generate_value_data import generate_value_data
 
 def get_data_files(data: dict) -> None:
     print("Reading data files...")
-    data["all_plantzones"] = ds.read_json("plantzone.json")
-    data["plantzone_drops"] = ds.read_json("plantzone_drops.json")
-    data["lodging_data"] = ds.read_json("all_lodging_storage.json")
-    data["town_to_group"] = ds.read_json("town_node_translate.json")["tnk2tk"]
-    data["group_to_town"] = ds.read_json("town_node_translate.json")["tk2tnk"]
-    data["group_to_townname"] = ds.read_json("warehouse_to_townname.json")
-    data["waypoint_data"] = ds.read_json("exploration.json")
-    data["waypoint_links"] = ds.read_json("deck_links.json")
+
+    data["exploration"] = {int(k): v for k, v in ds.read_json("exploration.json").items()}
+    data["lodging_data"] = {int(k): v for k, v in ds.read_json("all_lodging_storage.json").items()}
+    data["region_strings"] = {int(k): v for k, v in ds.read_strings_csv("Regioninfo.csv").items()}
 
 
 def get_value_data(prices: dict, modifiers: dict, data: dict) -> None:
@@ -30,31 +26,42 @@ def get_value_data(prices: dict, modifiers: dict, data: dict) -> None:
     if latest_sha == current_sha:
         print("  ...re-using existing node values data.")
     else:
-        generate_value_data(prices, modifiers)
-        ds.path().joinpath(sha_filename).write_text(latest_sha)
+        generate_value_data(prices, modifiers, data)
+    ds.path().joinpath(sha_filename).write_text(latest_sha)
 
     data["plant_values"] = ds.read_json("node_values_per_town.json")
-    data["plants"] = data["plant_values"].keys()
-    data["groups"] = data["plant_values"][list(data["plants"])[0]].keys()
-    data["towns"] = [data["group_to_town"][w] for w in data["groups"]]
-    data["max_ub"] = len(data["plants"])
 
 
 def get_lodging_data(lodging: dict, data: dict) -> None:
     print("Generating lodging data...")
-    for group, lodgings in data["lodging_data"].items():
-        if group not in data["groups"]:
+    for region_key, town_key in data["affiliated_town_region"].items():
+        if not data["exploration"][town_key]["is_worker_npc_town"]:
             continue
-        townname = data["group_to_townname"][group]
+        lodgings = data["lodging_data"][region_key]
+        townname = data["region_strings"][region_key]
         max_lodging = 1 + lodging[townname] + max([int(k) for k in lodgings.keys()])
-        data["lodging_data"][group]["max_ub"] = max_lodging
-        data["lodging_data"][group]["lodging_bonus"] = lodging[townname]
+        data["lodging_data"][region_key]["max_ub"] = max_lodging
+        data["lodging_data"][region_key]["lodging_bonus"] = lodging[townname]
 
 
-def generate_reference_data(config: dict, prices: dict, modifiers: dict, lodging: dict) -> dict:
+def generate_reference_data(
+    config: dict, prices: dict, modifiers: dict, lodging: dict, force_active_node_ids: list[int]
+) -> dict:
     data = {}
     data["config"] = config
+    data["force_active_node_ids"] = force_active_node_ids
     get_data_files(data)
+
+    data["max_ub"] = len(
+        [v for v in data["exploration"].values() if v["is_workerman_plantzone"]]
+    ) + len(force_active_node_ids)
+
+    data["affiliated_town_region"] = {
+        v["region_key"]: k
+        for k, v in data["exploration"].items()
+        if v["is_worker_npc_town"] or v["is_warehouse_town"]
+    }
+
     get_value_data(prices, modifiers, data)
     get_lodging_data(lodging, data)
     return data

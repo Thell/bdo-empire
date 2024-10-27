@@ -11,7 +11,6 @@ import customtkinter as ctk
 from CTkToolTip import CTkToolTip as ctktt
 from psutil import cpu_count
 
-from bdo_empire.initialize import initialize_data
 from bdo_empire.generate_graph_data import generate_graph_data
 from bdo_empire.generate_reference_data import generate_reference_data
 from bdo_empire.generate_workerman_data import generate_workerman_data
@@ -57,6 +56,8 @@ purchased_lodging = {
     "Godu Village": 0,
     "Bukpo": 0,
 }
+
+grindTakenList = []
 
 
 class WidgetState(Enum):
@@ -411,7 +412,7 @@ class EmpireOptimizerApp(ctk.CTk):
             else {}
         )
 
-        data = generate_reference_data(config, prices, modifiers, lodging)
+        data = generate_reference_data(config, prices, modifiers, lodging, grindTakenList)
         graph_data = generate_graph_data(data)
         prob = optimize(data, graph_data)
         workerman_json = generate_workerman_data(prob, lodging, data, graph_data)
@@ -429,7 +430,6 @@ class EmpireOptimizerApp(ctk.CTk):
 
 
 def main():
-    initialize_data()
     app = EmpireOptimizerApp()
     app.mainloop()
 

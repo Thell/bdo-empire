@@ -19,6 +19,15 @@ def read_text(filename: str) -> str:
     return path().joinpath(filename).read_text(encoding="utf-8")
 
 
+def read_strings_csv(filename: str) -> dict:
+    import csv
+
+    filepath = path().joinpath(filename)
+    with open(filepath, "r", encoding="UTF-8") as f:
+        records = {int(entry["Param0"]): entry["String"] for entry in csv.DictReader(f)}
+    return records
+
+
 def read_json(filename: str) -> dict:
     content = read_text(filename)
     return json.loads(content)

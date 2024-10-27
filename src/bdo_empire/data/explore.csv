@@ -1,0 +1,951 @@
+Param0,String
+1,Velia
+2,Western Guard Camp
+3,Cron Castle
+4,Western Gateway
+5,Bandit's Den Byway
+6,Heidel Pass
+21,Bartali Farm
+22,Finto Farm
+23,Goblin Cave
+24,Ancient Stone Chamber
+25,Imp Cave
+26,Loggia Farm
+27,Marino Farm
+41,Cron Castle Site
+42,Ehwaz Hill
+43,Forest of Plunder
+44,Balenos Forest
+45,Toscani Farm
+46,Coastal Cave
+47,Altar of Agris
+48,Forest of Seclusion
+49,Coastal Cliff
+61,Olvia
+62,Florin Gateway
+63,Elder's Bridge
+64,Casta Farm
+65,Wale Farm
+66,Wolf Hills
+67,Balenos River Mouth
+68,Terrmian Cliff
+69,Foot of Terrmian Mountain
+70,Olvia Coast
+71,Epheria Ridge
+72,Mask Owl's Forest
+102,Santo Manzi Investment Bank
+103,Bahar Investment Bank
+104,Specialties
+105,Specialties
+106,Specialties
+107,Specialties
+108,Specialties
+109,Specialties
+110,Specialties
+131,Potato Farming
+132,Chicken Meat Production
+133,Ossuary
+134,Ossuary
+135,Potato Farming
+136,Chicken Meat Production
+139,Mining
+142,Lumbering
+144,Excavation
+147,Mining
+148,Mining
+151,Potato Farming
+152,Specialties
+155,Gathering
+156,Mining
+159,Gathering
+160,Lumbering
+164,Gathering
+167,Lumbering
+168,Gathering
+171,Corn Farming
+172,Corn Farming
+175,Mining
+176,Mining
+179,Gathering
+183,Lumbering
+184,Mining
+187,Gathering
+188,Mining
+201,Lumbering
+202,Mining
+203,Grapes
+204,Olives
+205,Specialties
+301,Heidel
+302,Glish
+303,Northern Guard Camp
+304,Central Guard Camp
+305,Southern Guard Camp
+306,Northwestern Gateway
+307,Southwestern Gateway
+308,Eastern Border
+309,Eastern Gateway
+321,Alejandro Farm
+322,Costa Farm
+323,Moretti Plantation
+324,Castle Ruins
+325,Bloody Monastery
+326,Northern Heidel Quarry
+327,Serendia Shrine
+328,Lynch Ranch
+341,Northern Plain of Serendia
+343,Glish Swamp
+344,Southern Swamp
+345,Glish Ruins
+346,Northern Swamp
+347,Lynch Farm Ruins
+371,Biraghi Den
+372,Bradie Fortress
+373,Southern Neutral Zone
+374,Orc Camp
+375,Delphe Knights Castle
+376,Watchtower
+401,Luciano Pietro Investment Bank
+402,Siuta Investment Bank
+405,Freharau Investment Bank
+406,Larc Investment Bank
+407,Specialties
+408,Specialties
+409,Specialties
+410,Specialties
+431,Pumpkin Farming
+432,Honey Production
+435,Wheat Farming
+436,Pumpkin Farming
+437,Specialties
+438,Flax Farming
+439,Wheat Farming
+440,Flax Farming
+441,Moretti Safe Zone
+443,Lumbering
+451,Mining
+452,Mining
+455,Lumbering
+459,Fleece Production
+463,Gathering
+464,Lumbering
+471,Gathering
+472,Mining
+473,Specialties
+475,Gathering
+476,Mining
+479,Gathering
+480,Excavation
+483,Gathering
+484,Mining
+487,Gathering
+488,Excavation
+601,Calpheon
+602,Keplan
+603,Florin
+604,Port Epheria
+605,Enrique Encarotia Investment Bank
+606,Lehard Mertenan Investment Bank
+607,Luolo Grebe Investment Bank
+608,Trent
+609,Behr
+610,Basquean Ljurik Investment Bank
+611,Norma Leight Investment Bank
+612,Valentine Investment Bank
+613,Specialties
+614,Specialties
+615,Specialties
+616,Specialties
+617,Specialties
+618,Specialties
+619,Specialties
+621,Abandoned Land
+622,Quint Hill
+623,Anti-Troll Fortification
+624,Bree Tree Ruins
+625,Khuruto Cave
+626,Delphe Outpost
+627,Karanda Ridge
+628,Northern Wheat Plantation
+629,Old Dandelion
+630,Contaminated Farm
+631,Caphras Cave
+632,Isolated Sentry Post
+633,Dias Farm
+634,Epheria Sentry Post
+635,Epheria Valley
+636,Cohen Farm
+637,Elder's Bridge Post
+638,Bernianto Farm
+651,Marni Cave Path
+652,Oze Pass
+653,Marni Farm Ruins
+654,Keplan Hill
+655,Saunil Camp
+656,Primal Giant Post
+657,Saunil Battlefield
+658,Trina Fort
+659,Trina Beacon Towers
+660,Marni's Lab
+661,Falres Dirt Farm
+662,Hexe Stone Wall
+663,Bain Farmland
+664,North Abandoned Quarry
+665,Oberen Farm
+666,Beacon Entrance Post
+667,Abandoned Quarry
+668,Gehaku Plain
+669,Keplan Vicinity
+670,Gianin Farm
+671,Serendia Western Gateway
+672,Glutoni Cave
+673,Quarry Byway
+674,Keplan Quarry
+675,Oze's House
+676,Dane Canyon
+677,Tarte Rock Fork
+701,Calpheon Castle Site
+702,Calpheon Castle
+703,Treant Forest
+704,North Kaia Pier
+705,Behr Riverhead
+706,Rhutum Outstation
+707,Rhutum Sentry Post
+708,Abandoned Monastery
+709,Crioville
+710,Rhua Tree Stub
+711,South Kaia Pier
+712,Gabino Farm
+713,Catfishman Camp
+714,Calpheon Castle Western Forest
+715,Mansha Forest
+716,Marie Cave
+717,Tobare's Cabin
+718,Lumberjack's Rest Area
+719,Longleaf Tree Sentry Post
+720,Longleaf Tree Forest
+721,Witch's Chapel
+722,Phoniel's Cabin
+723,Behr Downstream
+724,Hexe Sanctuary
+725,Phoniel's Cabin Entrance
+726,North Kaia Mountaintop
+727,Lake Kaia
+801,Calpheon Trade Exchange
+805,Specialties
+806,Florin_2
+807,Florin_3
+809,Marco Faust Investment Bank
+810,Christine Cessory Investment Bank
+831,Gathering
+832,Specialties
+834,Lumbering
+835,Mining
+840,Lumbering
+841,Gathering
+842,Excavation
+843,Mining
+844,Khuruto Cave
+849,Gathering
+850,Karanda Ridge
+852,Wheat Farming
+853,Barley Farming
+854,Paprika Farming
+855,Lumbering
+856,Old Dandelion
+857,Specialties
+858,Northern Wheat Plantation Safe Zone
+901,Lumbering
+902,Excavation
+903,Lumbering
+904,Gathering
+905,Lumbering
+906,Gathering
+907,Lumbering
+908,Lumbering
+909,Abandoned Monastery
+910,Lumbering
+911,Gathering
+912,Excavation
+913,Mining
+914,Mining
+915,Specialties
+950,Mining
+951,Mining
+952,Lumbering
+953,Oze Pass
+954,North Abandoned Quarry
+955,Abandoned Quarry
+956,Keplan Hill
+957,Gathering
+958,Mining
+959,Mining
+960,Hexe Stone Wall
+961,Calpheon City Trade Zone
+962,Calpheon Market Trade Zone
+963,Calpheon Holy College Trade Zone
+964,Specialties
+1001,Lema Island
+1002,Iliya Island
+1003,Pilava Island
+1004,Delinghart Island
+1005,Pujara Island
+1006,Ajir Island
+1007,Al-Naha Island
+1008,Racid Island
+1009,Baremi Island
+1010,Weita Island
+1011,Beiruwa Island
+1012,Taramura Island
+1013,Ostra Island
+1014,Arakil Island
+1015,Kanvera Island
+1016,Orffs Island
+1017,Tulu Island
+1018,Luivano Island
+1019,Duch Island
+1020,Mariveno Island
+1021,Paratama Island
+1022,Eveto Island
+1023,Balvege Island
+1024,Marlene Island
+1026,Invernen Island
+1027,Angie Island
+1028,Tashu Island
+1029,Fish Drying Yard 1
+1030,Fish Drying Yard 2
+1031,Fish Drying Yard 1
+1032,Fish Drying Yard 2
+1033,Fish Drying Yard 1
+1034,Fish Drying Yard 2
+1035,Fish Drying Yard 1
+1036,Fish Drying Yard 2
+1037,Fish Drying Yard
+1038,Fish Drying Yard
+1039,Ephde Rune Island
+1040,Fish Drying Yard
+1041,Fish Drying Yard 1
+1042,Fish Drying Yard
+1043,Fish Drying Yard 1
+1044,Fish Drying Yard 2
+1045,Fish Drying Yard 3
+1046,Fish Drying Yard 1
+1047,Fish Drying Yard 2
+1048,Fish Drying Yard 1
+1049,Fish Drying Yard
+1050,Fish Drying Yard 2
+1051,Marka Island
+1052,Louruve Island
+1053,Staren Island
+1054,Lisz Island
+1055,Narvo Island
+1056,Albresser Island
+1057,Eberdeen Island
+1058,Oben Island
+1059,Daton Island
+1060,Dunde Island
+1061,Barater Island
+1062,Randis Island
+1063,Serca Island
+1064,Baeza Island
+1065,Modric Island
+1066,Theonil Island
+1067,Teyamal Island
+1068,Rameda Island
+1069,Ginburrey Island
+1070,Netnume Island
+1071,Fish Drying Yard
+1072,Fish Drying Yard
+1073,Fish Drying Yard
+1074,Fish Drying Yard 1
+1075,Fish Drying Yard 2
+1076,Fish Drying Yard 1
+1077,Fish Drying Yard
+1078,Fish Drying Yard 2
+1079,Fish Drying Yard 1
+1080,Fish Drying Yard 2
+1081,Fish Drying Yard 1
+1082,Fish Drying Yard 2
+1083,Fish Drying Yard
+1084,Fish Drying Yard 1
+1085,Fish Drying Yard 2
+1086,Fish Drying Yard 1
+1087,Fish Drying Yard 2
+1088,Fish Drying Yard
+1089,Fish Drying Yard
+1090,Fish Drying Yard 2
+1091,Kuit Islands
+1092,Almai Island
+1093,Padix Island
+1094,Teste Island
+1095,Arita Island
+1096,Shasha Island
+1097,Rosevan Island
+1098,Portanen Island
+1099,Tinberra Island
+1100,Lerao Island
+1101,Altinova
+1131,Mediah Northern Gateway
+1132,Sausan Garrison
+1133,Stonetail Wasteland
+1134,Mediah Northern Highlands
+1135,Rumbling Land
+1136,Kamasylve Temple
+1137,Manes Hideout
+1138,Asula Highlands
+1139,Wandering Rogue Den
+1140,Altinova Entrance
+1141,Tarif
+1143,Alumn Rock Valley
+1144,Abandoned Iron Mine
+1145,Abun
+1146,Marni's 2nd Lab
+1147,Stonebeak Shore
+1148,Soldier's Cemetery
+1149,Omar Lava Cave
+1150,The Mausoleum
+1151,Sarma Outpost
+1152,Mediah Castle
+1153,Kusha
+1154,Canyon of Corruption
+1155,Elric Shrine
+1156,Ancient Ruins Excavation Site
+1157,Helms Post
+1158,Stonetail Horse Ranch
+1159,Ahto Farm
+1160,Shuri Farm
+1161,Kasula Farm
+1162,Ancient Fissure
+1163,Mediah Shore
+1164,Highland Junction
+1165,Splashing Point
+1166,Sausan Garrison Wharf
+1167,Abandoned Iron Mine Rhutum District
+1168,Abandoned Iron Mine Saunil District
+1169,Abandoned Iron Mine Entrance
+1170,Awakening Bell
+1171,Tungrad Forest
+1172,Hasrah Cliff
+1189,Zigmund Investment Bank
+1190,Gulabi Investment Bank
+1191,Quina Investment Bank
+1192,Neruda Shen Investment Bank
+1193,Specialties
+1194,Specialties
+1195,Specialties
+1196,Specialties
+1197,Specialties
+1198,Specialties
+1199,Specialties
+1200,Specialties
+1201,Cotton Farming
+1202,Aloe Farming
+1203,Mining
+1204,Mining
+1205,Sweet Potato Farming
+1206,Cotton Farming
+1207,Cinnamon Farming
+1208,Mining
+1209,Mining
+1210,Gathering
+1211,Gathering
+1212,Lumbering
+1213,Mining
+1214,Gathering
+1215,Lumbering
+1216,Lumbering
+1217,Gathering
+1218,Mining
+1219,Lumbering
+1220,Excavation
+1221,Flax Farming
+1301,Valencia City
+1302,Altinova Gateway
+1303,Rock Post
+1304,Gorgo Rock Belt
+1305,Veteran's Canyon
+1306,Cadry Ruins
+1307,Kunid's Vacation Spot
+1308,Leical Falls
+1309,Pujiya Canyon
+1310,Bashim Base
+1311,Waragon Nest
+1312,Deserted City of Runn
+1313,Runn Gateway Intersection
+1314,Shakatu
+1315,Taphtar Plain
+1316,Basilisk Den
+1317,Barhan Gateway
+1318,Capotia
+1319,Sand Grain Bazaar
+1321,Yalt Canyon
+1322,Desert Naga Temple
+1324,Pila Fe
+1325,Pilgrim's Haven
+1326,Hope Pier
+1327,Gahaz Bandits' Lair
+1328,Bambu Valley
+1329,Iris Canyon
+1330,Kmach Canyon
+1331,Ibellab Oasis
+1332,Pilgrim's Sanctum: Obedience
+1333,Pilgrim's Sanctum: Abstinence
+1334,Pilgrim's Sanctum: Sharing
+1335,Pilgrim's Sanctum: Sincerity
+1336,Pilgrim's Sanctum: Humility
+1337,Pilgrim's Sanctum: Purity
+1338,Pilgrim's Sanctum: Fast
+1339,Rakshan Observatory
+1340,Scarlet Sand Chamber
+1342,Valencia Castle
+1343,Ancado Inner Harbor
+1344,Aakman
+1345,Crescent Shrine
+1346,Crescent Mountains
+1347,Titium Valley
+1350,Valencia Western Highlands
+1351,Bazaar Farmland
+1352,Shakatu Farmland
+1353,Altas Farmland
+1354,Erdal Farm
+1355,Valencia Plantation
+1356,Fohalam Farm
+1364,Sokota Island
+1365,Riyed Island
+1366,Esfah Island
+1367,Tigris Island
+1368,Shirna Island
+1369,Halmad Island
+1370,Kashuma Island
+1371,Orisha Island
+1372,Boa Island
+1373,Kisleev Crag
+1374,Valencia Castle Site
+1375,Ancado Coast
+1376,Derko Island
+1377,Shakatu Abandoned Pier
+1378,Red Battlefield
+1379,Areha Palm Forest
+1380,Arehaza
+1381,Muiquun
+1382,Central Cantusa
+1383,Cantusa Desert
+1384,Pila Ku Jail
+1385,Northern Sand Dune
+1387,Gavinya Volcano Zone
+1388,Gavinya Great Crater
+1389,Gavinya Coastal Cliff
+1390,Roud Sulfur Works
+1391,Ivory Wasteland
+1392,Ivero Cliff
+1393,Dona Rocky Mountain
+1394,Hakoven Island
+1395,Port Ratt
+1396,Kingdom of Haso
+1397,Zagam Island
+1398,Mariul Island
+1399,Nada Island
+1400,Ross Sea
+1401,Ross Sea
+1402,Ross Sea
+1403,Ross Sea
+1404,Ross Sea
+1405,Ross Sea
+1406,Ross Sea
+1407,Margoria
+1408,Margoria
+1409,Margoria
+1410,Margoria
+1411,Margoria
+1412,Margoria
+1413,Margoria
+1414,Margoria
+1415,Margoria
+1416,Margoria
+1417,Margoria
+1418,Margoria
+1419,Margoria
+1420,Margoria
+1421,Margoria
+1422,Margoria
+1423,Margoria
+1424,Margoria
+1425,Margoria
+1426,Margoria
+1427,Margoria
+1428,Margoria
+1429,Margoria
+1430,Margoria
+1431,Margoria
+1432,Margoria
+1433,Margoria
+1434,Margoria
+1435,Juur Sea
+1436,Juur Sea
+1437,Juur Sea
+1438,Juur Sea
+1439,Juur Sea
+1440,Juur Sea
+1441,Juur Sea
+1442,Vadabin
+1443,Vadabin
+1444,Vadabin
+1445,Vadabin
+1446,Vadabin
+1447,Vadabin
+1448,Vadabin
+1449,Vadabin
+1450,Fish Drying Yard 1
+1451,Fish Drying Yard 2
+1452,Margoria (Vell's Realm)
+1501,Gathering
+1502,Lumbering
+1503,Mining
+1504,Lumbering
+1505,Gathering
+1506,Gathering
+1507,Mining
+1508,Mining
+1509,Gathering
+1510,Mining
+1512,Lumbering
+1513,Mining
+1514,Gathering
+1515,Gathering
+1516,Lumbering
+1517,Mining
+1518,Gathering
+1519,Gathering
+1520,Gathering
+1521,Mining
+1522,Mining
+1523,Mining
+1524,Gathering
+1525,Gathering
+1526,Lumbering
+1527,Nutmeg
+1528,Teff
+1529,Fig
+1530,Fig
+1531,Star Anise
+1532,Teff
+1533,Teff
+1534,Pistachio
+1535,Date Palm
+1536,Pistachio
+1537,Date Palm
+1538,Freekeh
+1539,Teff
+1540,Teff
+1541,Specialties
+1542,Specialties
+1543,Specialties
+1544,Specialties
+1545,Specialties
+1546,Specialties
+1547,Atui Balacs Investment Bank
+1548,Godul Lateman Investment Bank
+1549,Taphtar Investment Bank
+1550,Valgon Investment Bank
+1551,Yis Kunjamin Investment Bank
+1552,Zahad Investment Bank
+1553,Excavation
+1554,Lumbering
+1555,Lumbering
+1556,Mining
+1557,Gathering
+1558,Mining
+1559,Gathering
+1560,Gathering
+1561,Mining
+1562,Mining
+1563,Specialties
+1564,Specialties
+1565,Silk Culture
+1566,Excavation
+1600,Kamasylvia Vicinity
+1601,Lemoria Guard Post
+1602,Atanis Pond
+1603,Caduil Forest
+1604,Old Wisdom Tree
+1605,Shady Tree Forest
+1606,Navarn Steppe
+1607,Central Lemoria Camp
+1608,Manshaum Forest
+1609,Holo Forest
+1610,Viv Foretta Hamlet
+1611,Valtarra Mountains
+1612,Valtarra - Altar of Training
+1613,Mirumok Ruins
+1614,Lemoria Beacon Towers
+1615,Kamasylvia Castle
+1616,Western Valtarra Mountains
+1617,Acher Guard Post
+1618,Loopy Tree Forest
+1619,Tooth Fairy Forest
+1620,Tooth Fairy Cabin
+1621,White Wood Forest
+1622,Lake Flondor
+1623,Grána
+1624,Polly's Forest
+1625,Southern Kamasylvia
+1626,Gyfin Rhasia Temple
+1627,Krogdalo's Trace
+1628,Looney Cabin
+1629,Weenie Cabin
+1630,Ash Forest
+1631,Yianaros's Field
+1632,Okiara River
+1633,Farming
+1634,Specialty(?)
+1635,Lumbering
+1636,Mining
+1637,Excavation
+1638,Lumbering
+1639,Gathering
+1640,Grow Mushroom
+1641,Grow Mushroom
+1642,Mining
+1643,Investment Bank
+1644,Investment Bank
+1645,Mining
+1646,Acher Western Camp
+1647,Acher Southern Camp
+1648,Roud Sulfur Mine
+1649,Duvencrune
+1650,Duvencrune Farmland
+1651,Duvencrune
+1652,Ahib Conflict Zone
+1653,Akum Rocky Mountain
+1654,Khalk Canyon
+1655,Sherekhan Necropolis
+1656,Garmoth's Nest
+1657,Harak's Shelter
+1658,Morning Fog Post
+1659,Night Crow Post
+1660,Windy Peak
+1661,Marcha Outpost
+1662,Gayak Altar
+1663,Fountain of Origin
+1664,Gervish Mountains
+1665,Dormann Lumber Camp
+1666,Khimut Lumber Camp
+1667,Forgotten Gateway
+1668,Tshira Ruins
+1669,Blood Wolf Settlement
+1670,Marak Farm
+1671,Farming
+1672,Farming
+1673,Farming
+1674,Farming
+1675,Gathering
+1676,Gathering
+1677,Gathering
+1678,Gathering
+1679,Mining
+1680,Mining
+1681,Mining
+1682,Mining
+1683,Lumbering
+1684,Lumbering
+1685,Lumbering
+1686,Lumbering
+1687,Excavation
+1688,Excavation
+1689,Investment Bank
+1690,Investment Bank
+1691,O'draxxia
+1692,O'dyllita Castle
+1693,Thornwood Forest
+1694,Crypt of Resting Thoughts
+1695,Narcion
+1696,Talibahr's Rope
+1697,La O'delle
+1698,Starry Midnight Port
+1699,O'dyllita Castle Vicinity
+1700,Tunkuta
+1701,Salun's Border
+1702,Bahit Sanctum
+1703,Olun's Valley
+1704,Star's End
+1705,Calpheon Northwestern Outpost
+1706,UnKnown
+1707,Grape Farming
+1708,Potato Farming
+1709,Excavation
+1710,Mining
+1711,Mining
+1712,Lumbering
+1713,Chicken Meat Production
+1714,Fish Drying Yard
+1715,Lumbering
+1716,Excavation
+1717,Mining
+1718,Brellin Farm
+1719,Outpost Supply Port
+1720,Excavation
+1727,Oquilla's Eye
+1734,Chiro's Cannon Workshop
+1735,Chiro's Sail Workshop
+1736,Chiro's Figurehead Workshop
+1737,Chiro's Black Plating Workshop
+1738,Grándiha
+1739,Papua Crinea
+1740,Forgotten Mountain
+1741,Salanar Pond
+1742,Delmira Plantation
+1743,Mountain of Division
+1744,Shiv Valley Road
+1745,Pit of the Undying
+1746,Crow's Nest
+1747,Awina's Tail
+1748,Wind Nol's Perch
+1749,Erethea's Belt
+1750,Eilton
+1751,Maslan's Yulas Citron Orchard
+1752,Snowstorm Guard Post
+1753,Mountain of Eternal Winter
+1754,Bronte's Bolt
+1755,Jade Starlight Forest
+1756,Mountain Top Guard Post
+1757,Tori Woods
+1758,UnKnown
+1759,Sherekhan Iron Mine
+1760,Derelict Trade Post
+1761,Shrine of Silent Prayers
+1762,Zvier Highlands
+1763,Camp Balacs
+1764,Charbonneau Villa
+1765,UnKnown
+1766,Pilgrim's End
+1767,Mining
+1768,Gathering
+1769,Mining
+1770,Excavation
+1771,Lumbering
+1772,Mining
+1773,Gathering
+1774,Gathering
+1775,Excavation
+1776,Gathering
+1777,Lumbering
+1778,Excavation
+1779,Honey Production
+1780,Lumbering
+1781,Dalbeol Village
+1782,Hanji County
+1783,Shimnidae Forest
+1784,Nampo Gate
+1785,Nampo's Moodle Village
+1786,Solgaji Forest
+1787,Cheongsan Institute
+1788,Dokkebi Forest
+1789,Golden Pig Cave
+1790,Gowun Plateau
+1791,Drybranch Village
+1792,Bomnae County
+1793,Honglim Base
+1794,Yeowoo Pass
+1795,Nopsae's Byeot County
+1796,Bari Forest
+1797,Beombawi Valley
+1798,Beombawi Gate
+1799,Haemo Island
+1800,Byukgye Island
+1801,UnKnown
+1802,UnKnown
+1803,Gathering
+1804,UnKnown
+1805,UnKnown
+1806,UnKnown
+1807,Excavation
+1808,Excavation
+1809,Excavation
+1810,UnKnown
+1811,Gathering
+1812,Gathering
+1813,Lumbering
+1814,Gathering
+1815,Lumbering
+1816,Gathering
+1817,Gathering
+1818,Gathering
+1819,Gathering
+1820,Lumbering
+1821,Lumbering
+1822,Gathering
+1823,Excavation
+1824,Gathering
+1825,Gathering
+1826,Farming
+1827,Farming
+1828,Farming
+1829,Gathering
+1830,Excavation
+1831,UnKnown
+1832,Dallae Pier
+1833,Dallae Pier Quarry
+1834,Asparkan
+1835,Atessahra
+1836,Sezec Mercenary Camp
+1837,City of the Dead
+1838,Tungrad Ruins
+1839,UnKnown
+1840,Neruda Plain
+1841,Tremorin Hill
+1842,Kermelun Wilds
+1843,Muzgar
+1844,Aakshrad Mountains
+1845,Yzrahid Highlands
+1846,Darkseekers' Retreat
+1847,Karasi Canyon
+1848,Barhan Camp
+1849,Shakhtar Wilds
+1850,Velandir
+1851,Stofbir
+1852,Seoul
+1853,Yukjo Street
+1854,Unjongga Street
+1855,Yuunru
+1856,Chowon Gardens
+1857,Godu Village
+1858,Bukpo
+1859,Wonjin Palace
+1860,Myeonggyun Hall
+1861,Secret Society
+1862,Taehak
+1863,Dang Forest
+1864,Geogugwi Cave
+1865,Holbon
+1866,Cloud Pier
+1867,Hwasun Valley
+1868,Dume Ridges
+1869,Mongryong's Exile
+1870,Mount Ahshi
+1871,Sky Altar
+1872,Martial God Tournament
+1873,Seoryeon Corps
+1874,Byeolli Forest
+1875,Motgol Village
+1876,Flower-sunken Swamp
+1877,Dongmakgol Village
+1878,Dungryong Cave
+1879,Farming
+1880,Farming
+1881,Farming
+1882,Farming
+1883,Lumbering
+1884,Excavation
+1885,Mining
+1886,Lumbering
+1887,Mining
+1888,Gathering
+1889,Lumbering
+1890,Excavation
+1891,Lumbering
+1892,Lumbering
+1893,Mining
+1894,Lumbering
+1895,Mining
+1896,Mining
+1897,Mining

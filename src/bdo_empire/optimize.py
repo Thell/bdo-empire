@@ -6,23 +6,23 @@ from bdo_empire.generate_graph_data import Arc, GraphData, Node, NodeType as NT
 from bdo_empire.optimize_par import solve_par
 
 
-def filter_arcs(v: Node, groupflow: str, arcs: list[Arc]) -> list[Arc]:
+def filter_arcs(v: Node, regionflow: str, arcs: list[Arc]) -> list[Arc]:
     return [
         var
         for arc in arcs
         for key, var in arc.vars.items()
-        if key.startswith("groupflow_") and (key == groupflow or v.isLodging)
+        if key.startswith("regionflow_") and (key == regionflow or v.isLodging)
     ]
 
 
-def link_in_out_by_group(prob: LpProblem, v: Node, in_arcs: list[Arc], out_arcs: list[Arc]) -> None:
+def link_in_out_by_region(prob: LpProblem, v: Node, in_arcs: list[Arc], out_arcs: list[Arc]) -> None:
     all_inflows = []
     f = v.vars["f"]
-    for group in v.groups:
-        groupflow_key = f"groupflow_{group.id}"
-        inflows = filter_arcs(v, groupflow_key, in_arcs)
-        outflows = filter_arcs(v, groupflow_key, out_arcs)
-        prob += lpSum(inflows) == lpSum(outflows), f"balance_{groupflow_key}_at_{v.name()}"
+    for region in v.regions:
+        regionflow_key = f"regionflow_{region.id}"
+        inflows = filter_arcs(v, regionflow_key, in_arcs)
+        outflows = filter_arcs(v, regionflow_key, out_arcs)
+        prob += lpSum(inflows) == lpSum(outflows), f"balance_{regionflow_key}_at_{v.name()}"
         all_inflows.append(inflows)
     prob += f == lpSum(all_inflows), f"flow_{v.name()}"
     prob += f <= v.ub * v.vars["x"], f"x_{v.name()}"
@@ -41,17 +41,17 @@ def create_problem(config: dict, G: GraphData) -> LpProblem:
         v.vars["f"] = LpVariable(f"flow_{v.name()}", 0, v.ub, "Integer")
 
     for arc in G["E"].values():
-        for group in set(arc.source.groups).intersection(set(arc.destination.groups)):
-            key = f"groupflow_{group.id}"
-            ub = arc.ub if arc.source.type in [NT.group, NT.𝓢, NT.𝓣, NT.lodging] else group.ub
+        for region in set(arc.source.regions).intersection(set(arc.destination.regions)):
+            key = f"regionflow_{region.id}"
+            ub = arc.ub if arc.source.type in [NT.region, NT.𝓢, NT.𝓣, NT.lodging] else region.ub
             cat = "Binary" if arc.source.type in [NT.𝓢, NT.plant] else "Integer"
             arc.vars[key] = LpVariable(f"{key}_on_{arc.name()}", 0, ub, cat)
 
     # Objective
     prize_values = [
-        round(plant.group_prizes[group.id]["value"], 2) * arc.vars[f"groupflow_{group.id}"]
+        round(plant.region_prizes[region.id]["value"], 2) * arc.vars[f"regionflow_{region.id}"]
         for plant in G["P"].values()
-        for group in plant.groups
+        for region in plant.regions
         for arc in plant.inbound_arcs
     ]
     prob += lpSum(prize_values), "ObjectiveFunction"
@@ -59,15 +59,15 @@ def create_problem(config: dict, G: GraphData) -> LpProblem:
     # Constraints
     prob += cost == lpSum(v.cost * v.vars["x"] for v in G["V"].values()), "TotalCost"
 
-    for group in G["G"].values():
-        vars = [lodge.vars["x"] for lodge in G["L"].values() if lodge.groups[0] == group]
-        prob += lpSum(vars) <= 1, f"lodging_{group.id}"
+    for region in G["R"].values():
+        vars = [lodge.vars["x"] for lodge in G["L"].values() if lodge.regions[0] == region]
+        prob += lpSum(vars) <= 1, f"lodging_{region.id}"
 
     for v in G["V"].values():
         if v.type not in [NT.𝓢, NT.𝓣]:
-            link_in_out_by_group(prob, v, v.inbound_arcs, v.outbound_arcs)
+            link_in_out_by_region(prob, v, v.inbound_arcs, v.outbound_arcs)
 
-    link_in_out_by_group(prob, G["V"]["𝓣"], G["V"]["𝓣"].inbound_arcs, G["V"]["𝓢"].outbound_arcs)
+    link_in_out_by_region(prob, G["V"]["𝓣"], G["V"]["𝓣"].inbound_arcs, G["V"]["𝓢"].outbound_arcs)
     prob += G["V"]["𝓢"].vars["x"] == 1, "x_source"
 
     for node in G["V"].values():
@@ -83,17 +83,17 @@ def create_problem(config: dict, G: GraphData) -> LpProblem:
         prob += lpSum(out_neighbors) >= node.vars["x"]
 
     # Edge case handling.
-    # If group 619 is active it must be connected to a near town.
+    # If region 619 is active it must be connected to a near town.
     # There are three connection paths to select from...
     connect_sets = [[1321, 1327, 1328, 1329, 1376], [1321, 1327, 1328, 1329, 1330, 1375], [1339]]
     connect_vars = []
     for i, connect_set in enumerate(connect_sets):
-        x = LpVariable(f"x_group_619_connect_{i}", 0, 1, "Binary")
+        x = LpVariable(f"x_region_619_connect_{i}", 0, 1, "Binary")
         connect_vars.append(x)
         prob += (
             lpSum([G["V"][f"waypoint_{wp}"].vars["x"] for wp in connect_set]) >= len(connect_set) * x
         )
-    prob += lpSum(connect_vars) >= G["V"]["group_619"].vars["x"]
+    prob += lpSum(connect_vars) >= G["V"]["region_619"].vars["x"]
 
     return prob
 
@@ -114,6 +114,8 @@ def optimize(data: dict, graph_data: GraphData) -> LpProblem:
 
     if num_processes == 1:
         print(f"Single process starting using {options}")
+        if options["log_file"]:
+            options["log_file"] = options["log_file"].as_posix()
         solver = HiGHS()
         solver.optionsDict = options
         prob.solve(solver)

@@ -1,0 +1,273 @@
+{
+    "1001": {
+        "tier": 2,
+        "price": 1050,
+        "wspd_jewelry": 5.0
+    },
+    "1002": {
+        "tier": 3,
+        "price": 1050,
+        "wspd_mass": 5.0
+    },
+    "1003": {
+        "tier": 1,
+        "price": 1050,
+        "wspd_weap": 5.0
+    },
+    "1004": {
+        "tier": 1,
+        "price": 1050,
+        "wspd_tool": 5.0
+    },
+    "1005": {
+        "tier": 2,
+        "price": 1050,
+        "wspd_furn": 5.0
+    },
+    "1006": {
+        "tier": 3,
+        "price": 1050,
+        "wspd": 2.0
+    },
+    "1007": {
+        "tier": 2,
+        "price": 1050,
+        "wspd_costume": 5.0
+    },
+    "1008": {
+        "tier": 1,
+        "price": 1050,
+        "wspd_refine": 5.0
+    },
+    "1009": {
+        "tier": 1,
+        "price": 1050,
+        "wspd_siege": 5.0
+    },
+    "1010": {
+        "tier": 1,
+        "price": 1050,
+        "wspd_mount": 5.0
+    },
+    "1011": {
+        "tier": 2,
+        "price": 1050,
+        "wspd_farm": 5.0
+    },
+    "1012": {
+        "tier": 2,
+        "price": 1050,
+        "mspd": 7.0,
+        "wspd": 2.0
+    },
+    "1013": {
+        "tier": 3,
+        "price": 1050,
+        "wspd_exclus": 5.0
+    },
+    "1101": {
+        "tier": 3,
+        "price": 1400,
+        "wspd": 2.0
+    },
+    "1102": {
+        "tier": 2,
+        "price": 1050,
+        "wspd": 1.5
+    },
+    "1103": {
+        "tier": 1,
+        "price": 1000,
+        "wspd": 1.0
+    },
+    "1201": {
+        "tier": 3,
+        "price": 1400,
+        "thrifty10": 0.1
+    },
+    "1202": {
+        "tier": 2,
+        "price": 1050,
+        "thrifty7": 0.1
+    },
+    "1203": {
+        "tier": 1,
+        "price": 1000,
+        "thrifty5": 0.1
+    },
+    "1301": {
+        "tier": 3,
+        "price": 1400,
+        "mspd": 10.0
+    },
+    "1302": {
+        "tier": 2,
+        "price": 1050,
+        "mspd": 7.0
+    },
+    "1303": {
+        "tier": 1,
+        "price": 1000,
+        "mspd": 5.0
+    },
+    "1401": {
+        "tier": 3,
+        "price": 2100,
+        "wspd": 3.0
+    },
+    "1402": {
+        "tier": 2,
+        "price": 1400,
+        "wspd": 2.0
+    },
+    "1403": {
+        "tier": 1,
+        "price": 1000,
+        "wspd": 1.0
+    },
+    "1501": {
+        "tier": 3,
+        "price": 2800,
+        "luck": 1.0
+    },
+    "1502": {
+        "tier": 2,
+        "price": 2100,
+        "luck": 0.7
+    },
+    "1503": {
+        "tier": 1,
+        "price": 1400,
+        "luck": 0.4
+    },
+    "1601": {
+        "tier": 3,
+        "price": 1400,
+        "mspd": 11.0
+    },
+    "1602": {
+        "tier": 2,
+        "price": 1050,
+        "mspd": 8.0
+    },
+    "1603": {
+        "tier": 2,
+        "price": 1000,
+        "mspd": 6.0
+    },
+    "1901": {
+        "tier": 3,
+        "price": 1050,
+        "base_mspd": 0.5
+    },
+    "1902": {
+        "tier": 3,
+        "price": 1050,
+        "lvlup_wspd": 0.2
+    },
+    "1903": {
+        "tier": 3,
+        "price": 1400,
+        "lvlup_luck": 0.2
+    },
+    "1904": {
+        "tier": 4,
+        "price": 2500,
+        "pack_produce": 1
+    },
+    "1905": {
+        "tier": 4,
+        "price": 2500,
+        "pack_herb": 1
+    },
+    "1906": {
+        "tier": 4,
+        "price": 2500,
+        "pack_mushr": 1
+    },
+    "1907": {
+        "tier": 4,
+        "price": 2500,
+        "pack_fish": 1
+    },
+    "1908": {
+        "tier": 4,
+        "price": 2500,
+        "pack_timber": 1
+    },
+    "1909": {
+        "tier": 4,
+        "price": 2500,
+        "pack_ore": 1
+    },
+    "1910": {
+        "tier": 5,
+        "price": 2500,
+        "pack_produce": 3
+    },
+    "1911": {
+        "tier": 5,
+        "price": 2500,
+        "pack_herb": 3
+    },
+    "1912": {
+        "tier": 5,
+        "price": 2500,
+        "pack_mushr": 3
+    },
+    "1913": {
+        "tier": 5,
+        "price": 2500,
+        "pack_fish": 3
+    },
+    "1914": {
+        "tier": 5,
+        "price": 2500,
+        "pack_timber": 3
+    },
+    "1915": {
+        "tier": 5,
+        "price": 2500,
+        "pack_ore": 3
+    },
+    "1916": {
+        "tier": 4,
+        "price": 2500,
+        "make_weap": 1
+    },
+    "1917": {
+        "tier": 4,
+        "price": 2500,
+        "make_armor": 1
+    },
+    "1918": {
+        "tier": 4,
+        "price": 2500,
+        "make_lifec": 1
+    },
+    "1919": {
+        "tier": 5,
+        "price": 2500,
+        "make_weap": 3
+    },
+    "1920": {
+        "tier": 5,
+        "price": 2500,
+        "make_armor": 3
+    },
+    "1921": {
+        "tier": 5,
+        "price": 2500,
+        "make_lifec": 3
+    },
+    "1922": {
+        "tier": 4,
+        "price": 2500,
+        "make_siege": 1
+    },
+    "1923": {
+        "tier": 5,
+        "price": 2500,
+        "make_siege": 3
+    }
+}
