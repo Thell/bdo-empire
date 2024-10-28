@@ -37,7 +37,7 @@ Using pip: `pip install bdo-empire`
 
 **Start the program**
 
-Installed using pipx: `optimize-empire.exe`  
+Installed using pipx: `empire-optimizer.exe`  
 Installed using pip: `python -m bdo_empire.main`
 
 
