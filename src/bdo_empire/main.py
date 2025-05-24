@@ -51,6 +51,7 @@ purchased_lodging = {
     "Dalbeol Village": 0,
     "Nampo's Moodle Village": 0,
     "Nopsae's Byeot County": 0,
+    "Asparkan": 0,
     "Muzgar": 0,
     "Yukjo Street": 0,
     "Godu Village": 0,
@@ -110,9 +111,7 @@ class EmpireOptimizerApp(ctk.CTk):
         ctktt(self.prices_entry, message="Set to file exported from workerman's settings page.")
 
         row += 1
-        self.lodging_button = ctk.CTkButton(
-            self, text="Setup Purchased Lodging", command=self.setup_lodging
-        )
+        self.lodging_button = ctk.CTkButton(self, text="Setup Purchased Lodging", command=self.setup_lodging)
         self.lodging_button.grid(row=row, column=1, padx=0, pady=10)
         self.lodging_status = ctk.CTkLabel(self, text=self.lodging_state.name)
         self.lodging_status.grid(row=row, column=3, padx=0, pady=10)
@@ -123,9 +122,7 @@ class EmpireOptimizerApp(ctk.CTk):
         self.modifiers_label.grid(row=row, column=0, padx=10, pady=10)
         self.modifiers_entry = ctk.CTkEntry(self, width=300)
         self.modifiers_entry.grid(row=row, column=1, padx=10, pady=10)
-        self.modifiers_button = ctk.CTkButton(
-            self, text="Browse", command=self.browse_modifiers_file
-        )
+        self.modifiers_button = ctk.CTkButton(self, text="Browse", command=self.browse_modifiers_file)
         self.modifiers_button.grid(row=row, column=2, padx=10, pady=10)
         self.modifiers_status = ctk.CTkLabel(self, text=self.modifiers_state.name)
         self.modifiers_status.grid(row=row, column=3, padx=10, pady=10)
@@ -143,9 +140,7 @@ class EmpireOptimizerApp(ctk.CTk):
         self.outpath_status.grid(row=row, column=3, padx=10, pady=10)
 
         row += 1
-        self.optimize_button = ctk.CTkButton(
-            self, text="Optimize", command=self.optimize, state=DISABLED
-        )
+        self.optimize_button = ctk.CTkButton(self, text="Optimize", command=self.optimize, state=DISABLED)
         self.optimize_button.grid(row=row, column=1, padx=10, pady=10)
         self.optimize_status = ctk.CTkLabel(self, text=self.optimize_state.name)
         self.optimize_status.grid(row=row, column=3, padx=10, pady=10)
@@ -219,9 +214,7 @@ class EmpireOptimizerApp(ctk.CTk):
                 lambda e, entry=entry: self.check_scroll(entry, scrollable_frame),
             )
 
-            entry.bind(
-                "<FocusOut>", lambda e, var=entry_var, lbl=status_label: validate_entry(var, lbl)
-            )
+            entry.bind("<FocusOut>", lambda e, var=entry_var, lbl=status_label: validate_entry(var, lbl))
 
             self.lodging_entries[town] = entry_var
             row += 1

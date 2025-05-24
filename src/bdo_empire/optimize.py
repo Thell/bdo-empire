@@ -90,9 +90,7 @@ def create_problem(config: dict, G: GraphData) -> LpProblem:
     for i, connect_set in enumerate(connect_sets):
         x = LpVariable(f"x_region_619_connect_{i}", 0, 1, "Binary")
         connect_vars.append(x)
-        prob += (
-            lpSum([G["V"][f"waypoint_{wp}"].vars["x"] for wp in connect_set]) >= len(connect_set) * x
-        )
+        prob += lpSum([G["V"][f"waypoint_{wp}"].vars["x"] for wp in connect_set]) >= len(connect_set) * x
     prob += lpSum(connect_vars) >= G["V"]["region_619"].vars["x"]
 
     return prob
@@ -102,7 +100,7 @@ def optimize(data: dict, graph_data: GraphData) -> LpProblem:
     num_processes = data["config"]["solver"]["num_processes"]
     print(
         f"\nSolving:  graph with {len(graph_data['V'])} nodes and {len(graph_data['E'])} arcs"
-        f"\n  Using:  budget of {data["config"]["budget"]}"
+        f"\n  Using:  budget of {data['config']['budget']}"
         f"\n   With:  {num_processes} processes."
     )
 

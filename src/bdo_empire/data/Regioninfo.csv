@@ -46,7 +46,7 @@ Param0,String
 45,Northern Neutral Zone
 46,Southern Neutral Zone
 47,Central Neutral Zone
-48,Sanctuary Valley Path
+48,Neutral Zone Valley Path
 49,Naga Marsh
 50,Fogan Marsh
 51,Extraction Mill
@@ -423,7 +423,7 @@ Param0,String
 432,Kuit Strait
 433,Arena of Arsha
 434,Iliya Island
-435,Savage Rift
+435,UnKnown
 436,Battle Arena
 437,Battle Arena
 438,Terrmian Beach
@@ -870,14 +870,14 @@ Param0,String
 996,Lantinia's Combat Raft
 997,Pakio's Combat Raft
 998,Crow Merchants' Vessel
-999,Rickun's Shipwreck Boat
+999,Shipwrecked Rickun's Ship
 1000,Oquilla's Eye
 1001,Shipwrecked Cox Pirate Ship
 1002,Shipwrecked Marine Vessel
-1003,Old Moon Guild Carrack
+1003,Old Moon Guild's Carrack
 1004,Shipwrecked Ancient Relic Cargo Ship
 1005,Cholace Chico's Pirate Union
-1006,Wandering Merchant Ship
+1006,Wandering Merchant's Ship
 1007,Oquilla's Eye
 1008,Oquilla Coast
 1009,Thornwood Archive
@@ -955,7 +955,7 @@ Param0,String
 1081,Syca's Cradle
 1082,Syca's Paradise
 1083,Yolu's Query
-1084,UnKnown
+1084,Orze's Vine
 1085,Atoraxxion
 1086,Vahmalkea
 1087,Sycrakea
@@ -974,7 +974,7 @@ Param0,String
 1100,Syca's Throat
 1101,Syca's Glare
 1102,Syca's Garden
-1103,UnKnown
+1103,Red Heart
 1104,Demibeast Village Cave
 1105,Murrowak's Labyrinth
 1106,Murrowak's Labyrinth
@@ -1047,7 +1047,7 @@ Param0,String
 1173,Path of Prophecy
 1174,Haven of Slumbering Origin
 1175,Mountain of Eternal Winter
-1176,Mountain of Eternal Winter
+1176,Snowfall Crasher: Alpine Glide
 1177,Mountain of Eternal Winter
 1178,Mountain of Eternal Winter
 1179,Pilgrim's End
@@ -1410,6 +1410,17 @@ Param0,String
 1537,Bukpo Sea
 1538,Hwanghae
 1539,Taebaek Clan
+1540,Atoraxxion
+1541,Orze's Cradle
+1542,Orze's Paradise
+1543,Main Hall
+1544,Snowfall Crasher: Powder Rush
+1545,Yolu's Underground Cave
+1546,Orze's Petal
+1547,Orze's Root
+1548,Orze's Base
+1549,Orze's Petal
+1550,Orze's Garden
 5000,UnKnown
 5001,UnKnown
 5002,UnKnown
