@@ -2,21 +2,23 @@
 
 from __future__ import annotations
 from enum import IntEnum, auto
-from typing import Any, Dict, List, TypedDict
+from typing import Any, TypedDict
 
 import networkx as nx
 
 
 class GraphData(TypedDict):
-    V: Dict[str, Node]  # All Nodes
-    E: Dict[tuple[str, str], Arc]  # All Arcs
-    F: Dict[str, Node]  # Force Active Nodes
-    R: Dict[str, Node]  # Region Nodes
-    L: Dict[str, Node]  # Lodging Nodes
-    P: Dict[str, Node]  # Plant Nodes
+    """GraphData class is passed to the model creator for the solver."""
+    V: dict[str, Node]  # All Nodes
+    E: dict[tuple[str, str], Arc]  # All Arcs
+    F: dict[str, Node]  # Force Active Nodes
+    R: dict[str, Node]  # Region Nodes
+    L: dict[str, Node]  # Lodging Nodes
+    P: dict[str, Node]  # Plant Nodes
 
 
 class NodeType(IntEnum):
+    """Enum identifying node types for the model creator for the solver."""
     𝓢 = auto()
     plant = auto()
     waypoint = auto()
@@ -32,25 +34,26 @@ class NodeType(IntEnum):
 
 
 class Node:
-    def __init__(
+    """Node class is passed to the model creator for the solver."""
+    def __init__(  # pylint: disable=dangerous-default-value
         self,
-        id: str,
-        type: NodeType,
+        id: str,  # pylint: disable=redefined-builtin
+        type: NodeType,  # pylint: disable=redefined-builtin
         ub: int,
         lb: int = 0,
         cost: int = 0,
-        regions: List[Node] = [],
+        regions: list[Node] = [],
     ):
         self.id = id
         self.type = type
         self.ub = ub
         self.lb = lb
         self.cost = cost
-        self.region_prizes: Dict[str, Dict[str, Any]] = {}
+        self.region_prizes: dict[str, dict[str, Any]] = {}
         self.regions = regions if regions else []
         self.key = self.name()
-        self.inbound_arcs: List[Arc] = []
-        self.outbound_arcs: List[Arc] = []
+        self.inbound_arcs: list[Arc] = []
+        self.outbound_arcs: list[Arc] = []
         self.vars = {}
         self.isPlant = type == NodeType.plant
         self.isLodging = type == NodeType.lodging
@@ -71,7 +74,7 @@ class Node:
         else:
             return False
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         obj_dict = {
             "key": self.name(),
             "name": self.name(),
@@ -88,11 +91,11 @@ class Node:
         }
         for node in self.regions:
             if node is self:
-                obj_dict["regions"].append("self")
+                obj_dict["regions"].append("self") # type: ignore
             else:
-                obj_dict["regions"].append(node.name())
+                obj_dict["regions"].append(node.name()) # type: ignore
         for k, v in self.vars.items():
-            obj_dict["vars"][k] = v.to_dict()
+            obj_dict["vars"][k] = v.to_dict() # type: ignore
         return obj_dict
 
     def __repr__(self) -> str:
@@ -115,7 +118,7 @@ class Arc:
         self.type = (source.type, destination.type)
         self.vars = {}
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "key": self.key,
             "name": self.name(),
@@ -142,7 +145,7 @@ class Arc:
         return hash((self.source.name() + self.destination.name()))
 
 
-def add_arcs(nodes: Dict[str, Node], arcs: Dict[tuple, Arc], node_a: Node, node_b: Node):
+def add_arcs(nodes: dict[str, Node], arcs: dict[tuple, Arc], node_a: Node, node_b: Node):
     """Add arcs between a and b."""
     # A safety measure to ensure arc direction.
     if node_a.type > node_b.type:
@@ -175,7 +178,7 @@ def add_arcs(nodes: Dict[str, Node], arcs: Dict[tuple, Arc], node_a: Node, node_
                 arc.destination.regions = [arc.source]
 
 
-def get_sparsified_link_graph(data: Dict[str, Any]):
+def get_sparsified_link_graph(data: dict[str, Any]):
     link_graph = nx.Graph()
     for origin_key, origin_data in data["exploration"].items():
         for destination_key in origin_data["link_list"]:
@@ -205,7 +208,7 @@ def get_sparsified_link_graph(data: Dict[str, Any]):
     return link_graph
 
 
-def get_link_node_type(node_id: int, data: Dict[str, Any]):
+def get_link_node_type(node_id: int, data: dict[str, Any]):
     """Return the NodeType of the given node_id node."""
     if data["exploration"][node_id]["is_town"]:
         return NodeType.town
@@ -230,7 +233,7 @@ def get_link_nodes(nodes, origin, destination, data):
     )
 
 
-def get_node(nodes, node_id: str, node_type: NodeType, data: Dict[str, Any], **kwargs) -> Node:
+def get_node(nodes, node_id: str, node_type: NodeType, data: dict[str, Any], **kwargs) -> Node:
     """
     Generate, add and return node based on NodeType.
 
@@ -250,21 +253,21 @@ def get_node(nodes, node_id: str, node_type: NodeType, data: Dict[str, Any], **k
             ub = 1
             cost = data["exploration"][int(node_id)]["need_exploration_point"]
         case NodeType.waypoint | NodeType.town:
-            ub = data["config"]["waypoint_ub"]
+            ub = data["config"]["max_waypoint_ub"]
             cost = data["exploration"][int(node_id)]["need_exploration_point"]
         case NodeType.region:
             lodging_data = data["lodging_data"][int(node_id)]
-            ub = lodging_data["max_ub"] + lodging_data["lodging_bonus"]
-            ub = min(ub, data["config"]["waypoint_ub"])
+            ub = lodging_data["max_ub"]
+            ub = min(ub, data["config"]["max_waypoint_ub"])
             cost = 0
         case NodeType.lodging:
             ub = kwargs.get("ub")
             lb = kwargs.get("lb")
             root = kwargs.get("root")
             cost = kwargs.get("cost")
-            assert (
-                ub and (lb is not None) and (cost is not None) and root
-            ), "Lodging nodes require 'ub', 'lb' 'cost' and 'root' kwargs."
+            assert (ub is not None) and (lb is not None) and (cost is not None) and root, (
+                "Lodging nodes require 'ub', 'lb' 'cost' and 'root' kwargs."
+            )
             regions = [root]
         case NodeType.𝓣:
             ub = data["max_ub"]
@@ -284,7 +287,7 @@ def get_node(nodes, node_id: str, node_type: NodeType, data: Dict[str, Any], **k
     return nodes[node.key]
 
 
-def process_links(nodes: Dict[str, Node], arcs: Dict[tuple, Arc], data: Dict[str, Any]):
+def process_links(nodes: dict[str, Node], arcs: dict[tuple, Arc], data: dict[str, Any]):
     """Process all waypoint links and add the nodes and arcs to the graph.
 
     Calls handlers for plant and town nodes to add plant value nodes and
@@ -310,8 +313,8 @@ def process_links(nodes: Dict[str, Node], arcs: Dict[tuple, Arc], data: Dict[str
                 process_town(nodes, arcs, end_node, data)
 
 
-def process_plant(nodes: Dict[str, Node], arcs: Dict[tuple, Arc], plant: Node, data: Dict[str, Any]):
-    """Add plant region values and arcs between the source and plant nodes."""
+def process_plant(nodes: dict[str, Node], arcs: dict[tuple, Arc], plant: Node, data: dict[str, Any]):
+    """Add plant region value nodes and arcs between the source and plant nodes."""
     for i, (region_id, value_data) in enumerate(data["plant_values"][plant.id].items(), 1):
         if i > data["config"]["top_n"]:
             break
@@ -320,46 +323,32 @@ def process_plant(nodes: Dict[str, Node], arcs: Dict[tuple, Arc], plant: Node, d
     add_arcs(nodes, arcs, nodes["𝓢"], plant)
 
 
-def process_town(nodes: Dict[str, Node], arcs: Dict[tuple, Arc], town: Node, data: Dict[str, Any]):
+def process_town(nodes: dict[str, Node], arcs: dict[tuple, Arc], town: Node, data: dict[str, Any]):
     """Add town region and lodging nodes and arcs between the town and sink nodes."""
     exploration_node = data["exploration"][int(town.id)]
-
-    # TODO: change this for handling force taken nodes since they can connect to any base town.
     if not exploration_node["is_worker_npc_town"]:
         return
 
     region_key = exploration_node["region_key"]
-    lodging_data = data["lodging_data"].get(region_key, None)
+
+    # NOTE: lodging data is pre-processed to account for base 1 bonus per town
+    # and any bonus pearl/loyalty lodging as well as any reserved lodging usage.
+    # See the 'lodging bounds' functions in "generate_reference_data.py".
+    lodging_data = data["lodging_data"].get(region_key)
     assert lodging_data, f"Error: Lodging data missing for region {region_key}!"
-    lodging_bonus = lodging_data["lodging_bonus"]
+    bounds_costs = lodging_data["bounds_costs"]
 
-    # Region lodging data is ordered in ascending order by lodgings and cost.
-    # For each lodging count <= min(max_ub, lodging_bonus) find the lowest cost.
+    # max_ub is the limiting constraint for total workers in a region
+    max_ub = lodging_data["max_ub"]
 
-    # lodgings is the list of previous 'best' (lodging, cost) pairs.
-    lodgings = [(1 + lodging_bonus, 0)]
-
-    for ub, lodging_data in lodging_data.items():
-        if ub in ["max_ub", "lodging_bonus"]:
-            continue
-
-        current = (1 + lodging_bonus + int(ub), lodging_data[0].get("cost"))
-
-        # remove previous 'best' (lodging, cost) pairs when dominated and replace with new 'best'
-        while lodgings and current[1] <= lodgings[-1][1] and current[0] >= lodgings[-1][0]:
-            lodgings.pop(-1)
-        lodgings.append(current)
-
-        if current[0] + 1 >= data["config"]["waypoint_ub"]:
-            break
-
-    # Each (lodging, cost) pair us a unique node in the graph, lodging is the arc flow constraint.
-
-    region_node = get_node(nodes, region_key, NodeType.region, data, ub=lodgings[-1][0])
+    region_node = get_node(nodes, region_key, NodeType.region, data, ub=max_ub)
     add_arcs(nodes, arcs, town, region_node)
 
+    # Each bounds_costs pair (lodging, cost) is a unique node in the graph
+    # where lodging the limiting constraint for workers at the given cost
+    # from the all_lodging_storage chains.
     lb = 0
-    for ub, cost in lodgings:
+    for ub, cost in bounds_costs:
         lodging_node = get_node(
             nodes,
             f"{region_node.id}_for_{ub}",
@@ -375,7 +364,13 @@ def process_town(nodes: Dict[str, Node], arcs: Dict[tuple, Arc], town: Node, dat
         lb = ub + 1
 
 
-def nearest_n_towns(data: Dict[str, Any], G: GraphData, nearest_n: int):
+def nearest_n_towns(data: dict[str, Any], G: GraphData, nearest_n: int):
+    """Identify and returns the nearest n towns to any given waypoint node.
+
+    The nearest towns serve as allowable flow constraints for transit routes
+    between production nodes and region nodes. Its purpose is to minimize the
+    solver search space by constraining to 'realistic' node assignments and routes.
+    """
     waypoint_graph = nx.DiGraph()
     for arc in G["E"].values():
         waypoint_graph.add_edge(arc.source.id, arc.destination.id, weight=arc.destination.cost)
@@ -396,7 +391,10 @@ def nearest_n_towns(data: Dict[str, Any], G: GraphData, nearest_n: int):
     return nearest_towns
 
 
-def finalize_regions(data: Dict[str, Any], G: GraphData, nearest_n: int):
+def finalize_regions(data: dict[str, Any], G: GraphData, nearest_n: int):
+    """Finalizes the allowable regional flows for all nodes except region and lodging nodes
+    which are already self-limited to their own region.
+    """
     # All region nodes have now been generated, finalize regions entries
     nearest_towns = nearest_n_towns(data, G, nearest_n)
     for v in G["V"].values():
@@ -409,10 +407,10 @@ def finalize_regions(data: Dict[str, Any], G: GraphData, nearest_n: int):
 
 
 def generate_graph_data(data):
-    """Generate and return a GraphData Dict composing the LP empire data."""
+    """Generate and return a GraphData dict composing the LP empire data."""
     print("Generating graph data...")
-    nodes: Dict[str, Node] = {}
-    arcs: Dict[tuple[str, str], Arc] = {}
+    nodes: dict[str, Node] = {}
+    arcs: dict[tuple[str, str], Arc] = {}
 
     get_node(nodes, "𝓢", NodeType.𝓢, data)
     get_node(nodes, "𝓣", NodeType.𝓣, data)

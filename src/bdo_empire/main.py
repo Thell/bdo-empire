@@ -13,12 +13,23 @@ from psutil import cpu_count
 
 from bdo_empire.generate_graph_data import generate_graph_data
 from bdo_empire.generate_reference_data import generate_reference_data
+from bdo_empire.generate_reference_data import get_region_lodging_bounds_costs
 from bdo_empire.generate_workerman_data import generate_workerman_data
 from bdo_empire.optimize import optimize
 
 
+optimize_config = {
+    "name": "Empire",
+    "budget": 0,
+    "top_n": 4,
+    "nearest_n": 5,
+    "max_waypoint_ub": 25,
+    "solver_config": {}
+}
+
+
 solver_config = {
-    "num_processes": max(1, cpu_count(logical=False) - 1),
+    "num_processes": max(1, cpu_count(logical=False) - 1), # type: ignore
     "mip_rel_gap": 1e-4,
     "mip_feasibility_tolerance": 1e-4,
     "primal_feasibility_tolerance": 1e-4,
@@ -26,40 +37,48 @@ solver_config = {
     "random_seed": randint(0, 2147483647),
 }
 
-purchased_lodging = {
-    "Velia": 0,
-    "Heidel": 0,
-    "Glish": 0,
-    "Calpheon City": 0,
-    "Olvia": 0,
-    "Keplan": 0,
-    "Port Epheria": 0,
-    "Trent": 0,
-    "Iliya Island": 0,
-    "Altinova": 0,
-    "Tarif": 0,
-    "Valencia City": 0,
-    "Shakatu": 0,
-    "Sand Grain Bazaar": 0,
-    "Ancado Inner Harbor": 0,
-    "Arehaza": 0,
-    "Old Wisdom Tree": 0,
-    "Grána": 0,
-    "Duvencrune": 0,
-    "O'draxxia": 0,
-    "Eilton": 0,
-    "Dalbeol Village": 0,
-    "Nampo's Moodle Village": 0,
-    "Nopsae's Byeot County": 0,
-    "Asparkan": 0,
-    "Muzgar": 0,
-    "Yukjo Street": 0,
-    "Godu Village": 0,
-    "Bukpo": 0,
+
+lodging_specifications = {
+    "Velia": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Heidel": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Glish": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Calpheon City": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Olvia": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Keplan": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Port Epheria": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Trent": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Iliya Island": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 0},
+    "Altinova": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 7},
+    "Tarif": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Valencia City": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Shakatu": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Sand Grain Bazaar": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Ancado Inner Harbor": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 0},
+    "Arehaza": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Old Wisdom Tree": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Grána": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Duvencrune": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "O'draxxia": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 8},
+    "Eilton": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Dalbeol Village": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Nampo's Moodle Village": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Nopsae's Byeot County": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Asparkan": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Muzgar": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Yukjo Street": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Godu Village": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Bukpo": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
 }
 
+# TODO: Implement solver setup for forced investment nodes.
 grindTakenList = []
 
+
+def try_parse_int(val, default=0):
+    try:
+        return int(val.strip())
+    except (ValueError, AttributeError):
+        return default
 
 class WidgetState(Enum):
     Ready = 0
@@ -84,6 +103,8 @@ class EmpireOptimizerApp(ctk.CTk):
         self.cp_state = WidgetState.Required
         self.outpath_state = WidgetState.Required
         self.optimize_state = WidgetState.Waiting
+        self.lodging_entries = {}
+        self.config_entries = {}
 
         self.create_widgets()
 
@@ -95,6 +116,8 @@ class EmpireOptimizerApp(ctk.CTk):
         self.cp_label.grid(row=row, column=0, padx=10, pady=10)
         self.cp_entry = ctk.CTkEntry(self, validate="focusout", validatecommand=self.validate_cp)
         self.cp_entry.grid(row=row, column=1, padx=10, pady=10)
+        self.cp_prepaid_label = ctk.CTkLabel(self, text="")
+        self.cp_prepaid_label.grid(row=row, column=2, padx=10, pady=10)
         self.cp_status = ctk.CTkLabel(self, text=self.cp_state.name)
         self.cp_status.grid(row=row, column=3, padx=10, pady=10)
 
@@ -115,7 +138,7 @@ class EmpireOptimizerApp(ctk.CTk):
         self.lodging_button.grid(row=row, column=1, padx=0, pady=10)
         self.lodging_status = ctk.CTkLabel(self, text=self.lodging_state.name)
         self.lodging_status.grid(row=row, column=3, padx=0, pady=10)
-        ctktt(self.lodging_button, message="Setup loyalty and pearl shop lodging.")
+        ctktt(self.lodging_button, message="Setup pearl shop bonus lodging and workshop reserved lodging.")
 
         row += 1
         self.modifiers_label = ctk.CTkLabel(self, text="Modifiers")
@@ -162,61 +185,96 @@ class EmpireOptimizerApp(ctk.CTk):
             self.validate_modifiers(file_path)
 
     def setup_lodging(self):
-        global purchased_lodging
-
-        def validate_entry(entry_var, label_widget):
-            if entry_var.get().isdigit():
-                label_widget.configure(text="Valid", text_color="green")
-            else:
-                label_widget.configure(text="Invalid", text_color="red")
-
         lodging_window = ctk.CTkToplevel(self)
-        lodging_window.title("Purchased Lodging Setup")
-        lodging_window.geometry("430x600")
+        lodging_window.title("Initial Lodging Setup")
+        lodging_window.geometry("700x600")
         lodging_window.update()
         lodging_window.grab_set()
 
-        scrollable_frame = ctk.CTkScrollableFrame(lodging_window, width=400, height=500)
+        scrollable_frame = ctk.CTkScrollableFrame(lodging_window, width=670, height=500)
         scrollable_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
 
         # Bind mouse wheel scrolling for linux (WSL)
         scrollable_frame.bind_all(
-            "<Button-4>", lambda e: scrollable_frame._parent_canvas.yview("scroll", -1, "units")
+            "<Button-4>", lambda e: scrollable_frame._parent_canvas.yview("scroll", -1, "units")  # pylint: disable=protected-access
         )
         scrollable_frame.bind_all(
-            "<Button-5>", lambda e: scrollable_frame._parent_canvas.yview("scroll", 1, "units")
+            "<Button-5>", lambda e: scrollable_frame._parent_canvas.yview("scroll", 1, "units")   # pylint: disable=protected-access
+        )
+
+        # Header labels
+        ctk.CTkLabel(scrollable_frame, text="Town", font=("Arial", 12, "bold")).grid(
+            row=0, column=0, padx=10, pady=5
+        )
+
+        bonus_label = ctk.CTkLabel(scrollable_frame, text="Bonus", font=("Arial", 12, "bold"))
+        bonus_label.grid(row=0, column=1, padx=10, pady=5)
+        ctktt(bonus_label, message="Lodging gained through pearl shop.")
+
+        reserved_label = ctk.CTkLabel(scrollable_frame, text="Reserved", font=("Arial", 12, "bold"))
+        reserved_label.grid(row=0, column=2, padx=10, pady=5)
+        ctktt(
+            reserved_label,
+            message="Lodging reserved for workshop use; incurs CP cost if greater than Bonus lodging.",
+        )
+
+        cost_label = ctk.CTkLabel(scrollable_frame, text="CP Cost", font=("Arial", 12, "bold"))
+        cost_label.grid(row=0, column=3, padx=10, pady=5)
+        ctktt(cost_label, message="CP cost for reserved lodging beyond Bonus lodging.")
+
+        ctk.CTkLabel(scrollable_frame, text="Status", font=("Arial", 12, "bold")).grid(
+            row=0, column=4, padx=10, pady=5
         )
 
         # Create entries for each town inside the scrollable frame
+        def make_scroll_binder(entry):
+            def handler(_e):
+                self.check_scroll(entry, scrollable_frame)
+            return handler
+
+        def make_validate_handler(var, status_label, prepaid_var, town):
+            def handler(_e):
+                self.validate_lodging(var, status_label, prepaid_var, town)
+            return handler
+
         self.lodging_entries = {}
-        row = 0
-        for town, value in purchased_lodging.items():
+        row = 1
+        for town, values in lodging_specifications.items():
+            bonus = values["bonus"]
+            reserved = values["reserved"]
+            prepaid = values["prepaid"]
+
             label = ctk.CTkLabel(scrollable_frame, text=town)
             label.grid(row=row, column=0, padx=10, pady=5)
 
-            entry_var = ctk.StringVar(value=str(value))
-            entry = ctk.CTkEntry(scrollable_frame, textvariable=entry_var)
-            entry.grid(row=row, column=1, padx=10, pady=5)
+            bonus_var = ctk.StringVar(value=str(bonus))
+            bonus_entry = ctk.CTkEntry(scrollable_frame, textvariable=bonus_var)
+            bonus_entry.grid(row=row, column=1, padx=10, pady=5)
+
+            reserved_var = ctk.StringVar(value=str(reserved))
+            reserved_entry = ctk.CTkEntry(scrollable_frame, textvariable=reserved_var)
+            reserved_entry.grid(row=row, column=2, padx=10, pady=5)
+
+            prepaid_var = ctk.StringVar(value=str(prepaid))
+            prepaid_label = ctk.CTkLabel(scrollable_frame, textvariable=prepaid_var)
+            prepaid_label.grid(row=row, column=3, padx=10, pady=5)
 
             status_label = ctk.CTkLabel(scrollable_frame, text="Optional")
-            status_label.grid(row=row, column=2, padx=10, pady=5)
+            status_label.grid(row=row, column=4, padx=10, pady=5)
 
-            entry.bind("<Tab>", lambda e, entry=entry: self.check_scroll(entry, scrollable_frame))
+            # The ISO_Left_tab is there for linux and Shift-KeyPress-Tab for windows
+            for ev in ("<Tab>", "<Shift-KeyPress-Tab>", "<ISO_Left_Tab>"):
+                bonus_entry.bind(ev, make_scroll_binder(bonus_entry))
+                reserved_entry.bind(ev, make_scroll_binder(reserved_entry))
 
-            # I'm not sure if this will work on windows.
-            entry.bind(
-                "<ISO_Left_Tab>",
-                lambda e, entry=entry: self.check_scroll(entry, scrollable_frame),
-            )
-            # But according to stackoverflow this does.
-            entry.bind(
-                "<Shift-KeyPress-Tab>",
-                lambda e, entry=entry: self.check_scroll(entry, scrollable_frame),
-            )
+            bonus_entry.bind("<FocusOut>", make_validate_handler(bonus_var, status_label, prepaid_var, town))
+            reserved_entry.bind("<FocusOut>", make_validate_handler(reserved_var, status_label, prepaid_var, town))
 
-            entry.bind("<FocusOut>", lambda e, var=entry_var, lbl=status_label: validate_entry(var, lbl))
-
-            self.lodging_entries[town] = entry_var
+            self.lodging_entries[town] = {
+                "bonus": bonus_var,
+                "reserved": reserved_var,
+                "prepaid": prepaid_var,
+            }
             row += 1
 
         import_button = ctk.CTkButton(lodging_window, text="Import", command=self.import_lodging)
@@ -230,7 +288,7 @@ class EmpireOptimizerApp(ctk.CTk):
         entry_row = entry.grid_info()["row"]
         entry_widget = scrollable_frame.grid_slaves(row=entry_row, column=1)[0]
 
-        canvas = scrollable_frame._parent_canvas
+        canvas = scrollable_frame._parent_canvas # pylint: disable=protected-access
         canvas.update_idletasks()
         canvas_height = canvas.winfo_height()
         scroll_top = canvas.canvasy(0)
@@ -252,34 +310,150 @@ class EmpireOptimizerApp(ctk.CTk):
         else:
             entry.tk_focusPrev().focus()
 
+    def recompute_total_prepaid_cp(self):
+        prepaid_total = sum(
+            spec.get("prepaid", 0) for spec in lodging_specifications.values()
+            if isinstance(spec.get("prepaid", 0), int)
+        )
+        if prepaid_total:
+            budget_val = try_parse_int(self.cp_entry.get(), default=0)
+            total_cp = budget_val + prepaid_total
+            self.cp_prepaid_label.configure(
+                text=f"+ Prepaid: {prepaid_total} = {total_cp}",
+                text_color="white"
+            )
+        else:
+            self.cp_prepaid_label.configure(text="")
+
+    def validate_lodging(self, entry_var, label_widget, cost_label, town):
+        value = entry_var.get()
+
+        if not value.isdigit():
+            label_widget.configure(text="Invalid", text_color="red")
+            cost_label.set("—")
+            return
+
+        try:
+            bonus = int(self.lodging_entries[town]["bonus"].get())
+            reserved = int(self.lodging_entries[town]["reserved"].get())
+        except ValueError as e:
+            print("ValueError:", e)
+            label_widget.configure(text="Invalid", text_color="red")
+            cost_label.set("—")
+            return
+
+        bonus_ub = lodging_specifications[town].get("bonus_ub", 0)
+        if bonus > bonus_ub:
+            label_widget.configure(
+                text=f"Max bonus is {bonus_ub}", text_color="orange"
+            )
+            cost_label.set("—")
+            return
+
+        try:
+            if bonus > 0 or reserved > 0:
+                max_ub = optimize_config["max_waypoint_ub"]
+                assert isinstance(max_ub, int), "max_waypoint_ub must be an integer"
+
+                tmp_spec = lodging_specifications[town].copy()
+                tmp_spec["bonus"] = bonus
+                tmp_spec["reserved"] = reserved
+
+                region_data = get_region_lodging_bounds_costs(town, tmp_spec)
+                prepaid = region_data["prepaid"]
+
+                # Only update model on valid input and valid computation
+                lodging_specifications[town]["bonus"] = bonus
+                lodging_specifications[town]["reserved"] = reserved
+                lodging_specifications[town]["prepaid"] = prepaid
+
+                cost_label.set(str(prepaid))
+                label_widget.configure(text="Valid", text_color="green")
+
+            else:
+                # Zero input means valid but no cost
+                lodging_specifications[town]["bonus"] = 0
+                lodging_specifications[town]["reserved"] = 0
+                lodging_specifications[town]["prepaid"] = 0
+                cost_label.set("0")
+                label_widget.configure(text="Valid", text_color="green")
+
+        except Exception as e:
+            print("Exception in validate_lodging:", e)
+            label_widget.configure(text="Invalid", text_color="red")
+            cost_label.set("—")
+            return
+
+        # Always refresh total CP label based on valid specs
+        self.recompute_total_prepaid_cp()
+
     def save_lodging_data(self, lodging_window):
-        global purchased_lodging
-        for town, var in self.lodging_entries.items():
-            value = var.get()
-            purchased_lodging[town] = int(value) if value.isdigit() else 0
+        # Defensive sync from UI in case of stray edits or skipped validations
+        for town, lodging_vars in self.lodging_entries.items():
+            try:
+                bonus_value = int(lodging_vars["bonus"].get())
+                reserved_value = int(lodging_vars["reserved"].get())
+                prepaid_value = int(lodging_vars["prepaid"].get())  # now stored as text variable
+
+                lodging_specifications[town].update({
+                    "bonus": bonus_value,
+                    "reserved": reserved_value,
+                    "prepaid": prepaid_value
+                })
+            except ValueError as e:
+                print(f"Warning: Could not parse lodging values for {town}: {e}")
+                continue
+
         lodging_window.destroy()
-        if any(v > 0 for v in purchased_lodging.values()):
+
+        # Update lodging state only if any values are meaningful
+        if any(d["bonus"] > 0 or d["reserved"] > 0 for d in lodging_specifications.values()):
             self.lodging_state = WidgetState.Ready
             self.lodging_status.configure(text=self.lodging_state.name, text_color="green")
-            self.lodging_status.update()
+        else:
+            self.lodging_state = WidgetState.Required
+            self.lodging_status.configure(text=self.lodging_state.name, text_color="gray")
+
+        self.lodging_status.update()
 
     def import_lodging(self):
         file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
         if file_path:
-            with open(file_path, "r") as file:
+            with open(file_path, "r", encoding="utf-8") as file:
                 loaded_data = json.load(file)
+                lodging_specifications.update(loaded_data)
                 for town, value in loaded_data.items():
                     if town in self.lodging_entries:
-                        self.lodging_entries[town].set(value)
+                        self.lodging_entries[town]["bonus"].set(value["bonus"])
+                        self.lodging_entries[town]["reserved"].set(value["reserved"])
+                        self.lodging_entries[town]["prepaid"].set(str(value["prepaid"]))
+                self.update_optimize_button_state()
 
     def export_lodging(self):
         file_path = filedialog.asksaveasfilename(
             defaultextension=".json", filetypes=[("JSON files", "*.json")]
         )
         if file_path:
-            lodging_data = {town: var.get() for town, var in self.lodging_entries.items()}
-            with open(file_path, "w") as file:
-                json.dump(lodging_data, file, indent=4)
+            export_data = {}
+            for town, values in self.lodging_entries.items():
+                try:
+                    bonus = int(values["bonus"].get())
+                    reserved = int(values["reserved"].get())
+                    prepaid = int(values["prepaid"].get())
+                    export_data[town] = {
+                        "bonus": bonus,
+                        "reserved": reserved,
+                        "prepaid": prepaid
+                    }
+                except ValueError as e:
+                    print(f"Skipping {town} due to invalid data: {e}")
+                    continue
+
+            with open(file_path, "w", encoding="utf-8") as file:
+                json.dump(export_data, file, indent=4)
+
+        self.update_optimize_button_state()
+
 
     def browse_outpath(self):
         file_path = filedialog.askdirectory()
@@ -302,6 +476,8 @@ class EmpireOptimizerApp(ctk.CTk):
             self.cp_state = WidgetState.Required
             self.cp_status.configure(text=self.cp_state.name)
             status = False
+
+        self.recompute_total_prepaid_cp()
         self.update_optimize_button_state()
         return status
 
@@ -353,8 +529,6 @@ class EmpireOptimizerApp(ctk.CTk):
         self.optimize_button.update()
 
     def config_solver(self):
-        global solver_config
-
         config_window = ctk.CTkToplevel(self)
         config_window.title("Solver Configuration")
         config_window.geometry("400x250")
@@ -376,7 +550,6 @@ class EmpireOptimizerApp(ctk.CTk):
         config_window.protocol("WM_DELETE_WINDOW", lambda: self.save_config_data(config_window))
 
     def save_config_data(self, config_window):
-        global solver_config
         int_fields = ["num_processes", "random_seed"]
         for setting, var in self.config_entries.items():
             value = var.get()
@@ -384,37 +557,30 @@ class EmpireOptimizerApp(ctk.CTk):
         config_window.destroy()
 
     def optimize(self):
-        global solver_config
-
         print("Begin optimization...")
         self.optimize_state = WidgetState.Running
         self.optimize_status.configure(text=self.optimize_state.name, text_color="green")
         self.optimize_status.update()
 
-        config = {}
-        config["name"] = "Empire"
+        config = optimize_config.copy()
         config["budget"] = int(self.cp_entry.get())
-        config["top_n"] = 4
-        config["nearest_n"] = 5
-        config["waypoint_ub"] = 25
         config["solver"] = solver_config
 
-        lodging = purchased_lodging
-        prices = json.loads(Path(self.prices_entry.get()).read_text())["effectivePrices"]
+        prices = json.loads(Path(self.prices_entry.get()).read_text(encoding="utf-8"))["effectivePrices"]
         modifiers = (
-            json.loads(Path(self.modifiers_entry.get()).read_text())["regionModifiers"]
+            json.loads(Path(self.modifiers_entry.get()).read_text(encoding="utf-8"))["regionModifiers"]
             if self.modifiers_entry.get()
             else {}
         )
 
-        data = generate_reference_data(config, prices, modifiers, lodging, grindTakenList)
+        data = generate_reference_data(config, prices, modifiers, lodging_specifications, grindTakenList)
         graph_data = generate_graph_data(data)
         prob = optimize(data, graph_data)
-        workerman_json = generate_workerman_data(prob, lodging, data, graph_data)
+        workerman_json = generate_workerman_data(prob, lodging_specifications, data, graph_data)
 
         outpath = Path(self.outpath_entry.get())
         outfile = outpath.joinpath("optimized_empire.json")
-        with open(outfile, "w") as json_file:
+        with open(outfile, "w", encoding="utf-8") as json_file:
             json.dump(workerman_json, json_file, indent=4)
         print("workerman json written to:", outfile)
         print("Completed.")
