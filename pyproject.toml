@@ -1,6 +1,6 @@
 [project]
 name = "bdo-empire"
-version = "0.1.10"
+version = "0.2.0"
 description = "Worker empire optimizer for BDO using HiGHS mip solver."
 authors = [{ name = "Thell 'Bo' Fowler", email = "thell@tbfowler.net" }]
 
@@ -27,12 +27,10 @@ empire-optimizer = "bdo_empire.main:main"
 package = true
 
 [dependency-groups]
-dev = [
-    "twine>=6.1.0",
-]
+dev = ["twine>=6.1.0"]
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
