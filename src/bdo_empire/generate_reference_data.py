@@ -108,6 +108,18 @@ def compute_lodging_bounds_costs(
     return bounds_costs, prepaid
 
 
+def get_affiliated_town_regions(data: dict|None = None) -> dict:
+    """
+    """
+    if data is None:
+        data = {}
+        data["exploration"] = ds.read_json("exploration.json")
+    return {
+        v["region_key"]: k
+        for k, v in data["exploration"].items()
+        if v["is_worker_npc_town"] or v["is_warehouse_town"]
+    }
+
 def region_key_from_townname(townname: str, data: dict[str, Any] | None = None) -> int:
     """Translates a town name into its corresponding region key using Regioninfo strings.
 
@@ -118,7 +130,8 @@ def region_key_from_townname(townname: str, data: dict[str, Any] | None = None) 
     Reads directly from Regioninfo.csv when data is None
     """
     region_strings = ds.read_strings_csv("Regioninfo.csv") if data is None else data["region_strings"]
-    region_key = next((rk for rk, name in region_strings.items() if name == townname), None)
+    affiliated_town_regions = get_affiliated_town_regions(data)
+    region_key = next((rk for rk, name in region_strings.items() if name == townname and rk in affiliated_town_regions), None)
     if not region_key:
         raise ValueError(f"Town name {townname} not found in Regioninfo.csv")
     return region_key
@@ -235,11 +248,7 @@ def generate_reference_data(
         force_active_node_ids
     )
 
-    data["affiliated_town_region"] = {
-        v["region_key"]: k
-        for k, v in data["exploration"].items()
-        if v["is_worker_npc_town"] or v["is_warehouse_town"]
-    }
+    data["affiliated_town_region"] = get_affiliated_town_regions(data)
 
     set_data_plant_values(prices, modifiers, data)
     set_lodging_bounds_costs(lodging, data)

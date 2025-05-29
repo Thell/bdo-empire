@@ -40,35 +40,35 @@ solver_config = {
 
 
 lodging_specifications = {
-    "Velia": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
-    "Heidel": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
-    "Glish": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Calpheon City": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
-    "Olvia": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Keplan": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Port Epheria": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Trent": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Iliya Island": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 0},
-    "Altinova": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 7},
-    "Tarif": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Valencia City": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
-    "Shakatu": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Sand Grain Bazaar": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Ancado Inner Harbor": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 0},
-    "Arehaza": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Old Wisdom Tree": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Grána": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
-    "Duvencrune": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
-    "O'draxxia": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 8},
-    "Eilton": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Dalbeol Village": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Nampo's Moodle Village": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Nopsae's Byeot County": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Asparkan": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Muzgar": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Yukjo Street": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Godu Village": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
-    "Bukpo": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
+    "Velia": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 7},
+    "Heidel": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 7},
+    "Glish": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Calpheon City": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 7},
+    "Olvia": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Keplan": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Port Epheria": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Trent": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Iliya Island": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 1},
+    "Altinova": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 8},
+    "Tarif": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Valencia City": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 7},
+    "Shakatu": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Sand Grain Bazaar": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Ancado Inner Harbor": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 1},
+    "Arehaza": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Old Wisdom Tree": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Grána": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 7},
+    "Duvencrune": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 7},
+    "O'draxxia": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 9},
+    "Eilton": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Dalbeol Village": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Nampo's Moodle Village": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Nopsae's Byeot County": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Asparkan": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Muzgar": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Yukjo Street": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Godu Village": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
+    "Bukpo": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
 }
 
 # TODO: add node type to grinding node listings?
@@ -404,11 +404,11 @@ class EmpireOptimizerApp(ctk.CTk):
     def setup_lodging(self):
         lodging_window = ctk.CTkToplevel(self)
         lodging_window.title("Initial Lodging Setup")
-        lodging_window.geometry("700x600")
+        lodging_window.geometry("750x600")
         lodging_window.update()
         lodging_window.grab_set()
 
-        scrollable_frame = ctk.CTkScrollableFrame(lodging_window, width=670, height=500)
+        scrollable_frame = ctk.CTkScrollableFrame(lodging_window, width=720, height=500)
         scrollable_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
 
         # Bind mouse wheel scrolling for linux (WSL)
@@ -560,12 +560,11 @@ class EmpireOptimizerApp(ctk.CTk):
             return
 
         bonus_ub = lodging_specifications[town].get("bonus_ub", 0)
+        has_warning = False
+        warning_msg = ""
         if bonus > bonus_ub:
-            label_widget.configure(
-                text=f"Max bonus is {bonus_ub}", text_color="orange"
-            )
-            cost_label.set("—")
-            return
+            warning_msg=f"Max bonus should be {bonus_ub}"
+            has_warning = True
 
         try:
             if bonus > 0 or reserved > 0:
@@ -585,7 +584,10 @@ class EmpireOptimizerApp(ctk.CTk):
                 lodging_specifications[town]["prepaid"] = prepaid
 
                 cost_label.set(str(prepaid))
-                label_widget.configure(text="Valid", text_color="green")
+                if has_warning:
+                    label_widget.configure(text=warning_msg, text_color="orange")
+                else:
+                    label_widget.configure(text="Valid", text_color="green")
 
             else:
                 # Zero input means valid but no cost
