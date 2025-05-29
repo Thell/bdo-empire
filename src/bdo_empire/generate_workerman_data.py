@@ -115,15 +115,12 @@ def extract_solution(prob) -> tuple[dict, dict, dict]:
     for k, v in prob.variablesDict().items():
         if not round(v.varValue) >= 1:
             continue
-        # print(f"{k}: {v.varValue}")
         if k.startswith("flow_lodging_") and "_to_" not in k:
             lodging_vars[k.replace("flow_", "")] = v
         elif "_on_plant_" in k:
             origin_vars[k.split("_")[4]] = k.split("_")[1]
         elif k.startswith(("x_waypoint", "x_town")):
             waypoint_vars[k.replace("x_", "")] = v
-        else:
-            print(f"Did not capture variable: {k}")
     return lodging_vars, origin_vars, waypoint_vars
 
 
