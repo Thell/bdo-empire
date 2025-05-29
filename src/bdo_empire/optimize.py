@@ -43,9 +43,14 @@ def create_problem(config: dict, G: GraphData) -> LpProblem:
     for arc in G["E"].values():
         for region in set(arc.source.regions).intersection(set(arc.destination.regions)):
             key = f"regionflow_{region.id}"
-            ub = arc.ub if arc.source.type in [NT.region, NT.𝓢, NT.𝓣, NT.lodging] else region.ub
+            ub = arc.ub if arc.source.type in [NT.region, NT.𝓢, NT.𝓣, NT.lodging, NT.super_root] else region.ub
             cat = "Binary" if arc.source.type in [NT.𝓢, NT.plant] else "Integer"
-            arc.vars[key] = LpVariable(f"{key}_on_{arc.name()}", 0, ub, cat)
+            if arc.source.type == NT.𝓢 and arc.destination.isForceActive:
+                arc.vars[key] = LpVariable(f"{key}_on_{arc.name()}", ub, ub, cat)
+            if arc.source.type == NT.super_root and arc.destination.type ==  NT.𝓣:
+                arc.vars[key] = LpVariable(f"{key}_on_{arc.name()}", ub, ub, cat)
+            else:
+                arc.vars[key] = LpVariable(f"{key}_on_{arc.name()}", 0, ub, cat)
 
     # Objective
     prize_values = [
@@ -57,11 +62,16 @@ def create_problem(config: dict, G: GraphData) -> LpProblem:
     prob += lpSum(prize_values), "ObjectiveFunction"
 
     # Constraints
-    prob += cost == lpSum(v.cost * v.vars["x"] for v in G["V"].values()), "TotalCost"
+    prob += lpSum(v.cost * v.vars["x"] for v in G["V"].values()) <= cost, "TotalCost"
 
     for region in G["R"].values():
         vars = [lodge.vars["x"] for lodge in G["L"].values() if lodge.regions[0] == region]
         prob += lpSum(vars) <= 1, f"lodging_{region.id}"
+
+    if len(G["F"]) > 0:
+        for forced_node in G["F"]:
+            print(f"Setting forced node: {forced_node}")
+            prob += G["V"][forced_node].vars["x"] == 1, f"forced_{forced_node}"
 
     for v in G["V"].values():
         if v.type not in [NT.𝓢, NT.𝓣]:
@@ -100,7 +110,7 @@ def optimize(data: dict, graph_data: GraphData) -> LpProblem:
     num_processes = data["config"]["solver"]["num_processes"]
     print(
         f"\nSolving:  graph with {len(graph_data['V'])} nodes and {len(graph_data['E'])} arcs"
-        f"\n  Using:  budget of {data['config']['budget']}"
+        f"\n  Using:  budget of {data['config']['budget']} and {len(data['force_active_node_ids'])} forced active nodes."
         f"\n   With:  {num_processes} processes."
     )
 

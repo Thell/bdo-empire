@@ -5,12 +5,13 @@ import json
 from math import inf
 from pathlib import Path
 from random import randint
-from tkinter import DISABLED, NORMAL, filedialog
+from tkinter import ACTIVE, DISABLED, END, NORMAL, filedialog, Listbox
 
 import customtkinter as ctk
 from CTkToolTip import CTkToolTip as ctktt
 from psutil import cpu_count
 
+import bdo_empire.data_store as ds
 from bdo_empire.generate_graph_data import generate_graph_data
 from bdo_empire.generate_reference_data import generate_reference_data
 from bdo_empire.generate_reference_data import get_region_lodging_bounds_costs
@@ -70,8 +71,24 @@ lodging_specifications = {
     "Bukpo": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 5},
 }
 
-# TODO: Implement solver setup for forced investment nodes.
-grindTakenList = []
+# TODO: add node type to grinding node listings?
+# 0: normal
+# 1: village
+# 2: city
+# 3: gate
+# 4: farm
+# 5: trade
+# 6: collect
+# 7: quarry
+# 8: logging
+# 9: dangerous
+# 10: finance
+# 11: fish_trap
+# 12: minor_finance
+# 13: monopoly_farm
+# 14: craft
+# 15: excavation
+# 16: count
 
 
 def try_parse_int(val, default=0):
@@ -89,22 +106,35 @@ class WidgetState(Enum):
     Error = 5
 
 
+def get_version():
+    from importlib.metadata import version, PackageNotFoundError
+    try:
+        return version("bdo-empire")
+    except PackageNotFoundError:
+        return "dev"
+
+
 class EmpireOptimizerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Empire Optimizer")
-        self.geometry("660x300")
+        self.title(f"Empire Optimizer - {get_version()}")
+        self.geometry("660x350")
 
         self.data_state = WidgetState.Required
-        self.prices_state = WidgetState.Required
-        self.modifiers_state = WidgetState.Optional
-        self.lodging_state = WidgetState.Optional
         self.cp_state = WidgetState.Required
+        self.prices_state = WidgetState.Required
+        self.lodging_state = WidgetState.Optional
+        self.modifiers_state = WidgetState.Optional
+        self.grinding_state = WidgetState.Optional
         self.outpath_state = WidgetState.Required
         self.optimize_state = WidgetState.Waiting
+
         self.lodging_entries = {}
         self.config_entries = {}
+        self.grinding_entries = {}
+        self.node_lookup = self.load_node_name_lookup()
+        self.all_nodes = sorted(self.node_lookup.items(), key=lambda x: x[1])
 
         self.create_widgets()
 
@@ -115,6 +145,7 @@ class EmpireOptimizerApp(ctk.CTk):
         self.cp_label = ctk.CTkLabel(self, text="CP Limit")
         self.cp_label.grid(row=row, column=0, padx=10, pady=10)
         self.cp_entry = ctk.CTkEntry(self, validate="focusout", validatecommand=self.validate_cp)
+        self.cp_entry.bind("<FocusOut>", lambda event: self.validate_cp())
         self.cp_entry.grid(row=row, column=1, padx=10, pady=10)
         self.cp_prepaid_label = ctk.CTkLabel(self, text="")
         self.cp_prepaid_label.grid(row=row, column=2, padx=10, pady=10)
@@ -139,6 +170,13 @@ class EmpireOptimizerApp(ctk.CTk):
         self.lodging_status = ctk.CTkLabel(self, text=self.lodging_state.name)
         self.lodging_status.grid(row=row, column=3, padx=0, pady=10)
         ctktt(self.lodging_button, message="Setup pearl shop bonus lodging and workshop reserved lodging.")
+
+        row += 1
+        self.grinding_button = ctk.CTkButton(self, text="Setup Forced Nodes", command=self.setup_grinding)
+        self.grinding_button.grid(row=row, column=1, padx=0, pady=10)
+        self.grinding_status = ctk.CTkLabel(self, text=self.grinding_state.name)
+        self.grinding_status.grid(row=row, column=3, padx=0, pady=10)
+        ctktt(self.grinding_button, message="Setup grinding/trade nodes.")
 
         row += 1
         self.modifiers_label = ctk.CTkLabel(self, text="Modifiers")
@@ -170,6 +208,30 @@ class EmpireOptimizerApp(ctk.CTk):
         self.config_button = ctk.CTkButton(self, text="Config Solver", command=self.config_solver)
         self.config_button.grid(row=row, column=2, padx=10, pady=10)
 
+    def themed_listbox(self, master):
+        appearance = ctk.get_appearance_mode()
+        theme = ctk.ThemeManager.theme
+
+        def resolve_color(val):
+            # If it's a list (light/dark pair), pick the appropriate one
+            return val[1] if appearance == "Dark" else val[0]
+
+        bg = resolve_color(theme["CTkFrame"]["fg_color"])
+        fg = resolve_color(theme["CTkLabel"]["text_color"])
+        select_bg = resolve_color(theme["CTkButton"]["fg_color"])
+        select_fg = resolve_color(theme["CTkButton"]["text_color"])
+
+        lb = Listbox(
+            master,
+            bg=bg,
+            fg=fg,
+            selectbackground=select_bg,
+            selectforeground=select_fg,
+            highlightthickness=0,
+            borderwidth=0
+        )
+        return lb
+
     def browse_prices_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json")])
         if file_path:
@@ -183,6 +245,161 @@ class EmpireOptimizerApp(ctk.CTk):
             self.modifiers_entry.delete(0, ctk.END)
             self.modifiers_entry.insert(0, file_path)
             self.validate_modifiers(file_path)
+
+    def load_node_name_lookup(self):
+        try:
+            explore_name_map = ds.read_strings_csv("explore.csv")
+            exploration_data = ds.read_json("exploration.json")
+            return {
+                int(node_data["waypoint_key"]): explore_name_map.get(node_data["waypoint_key"], f"Unknown {node_data['waypoint_key']}")
+                for node_data in exploration_data.values()
+            }
+        except Exception as e:
+            print(f"Failed to load node names: {e}")
+            return {}
+
+    def setup_grinding(self):
+        grinding_window = ctk.CTkToplevel(self)
+        grinding_window.title("Setup Grinding Nodes")
+        grinding_window.geometry("800x500")
+        grinding_window.update()
+        grinding_window.grab_set()
+
+        self.search_var = ctk.StringVar()
+        self.grinding_entries["keys"] = self.grinding_entries.get("keys", [])
+
+        # LEFT SIDE
+        left_frame = ctk.CTkFrame(grinding_window)
+        left_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+        ctk.CTkLabel(left_frame, text="Search Nodes").pack(anchor="w", padx=5)
+        search_box = ctk.CTkEntry(left_frame, textvariable=self.search_var)
+        search_box.pack(fill="x", padx=5, pady=5)
+        search_box.bind("<KeyRelease>", self.update_grinding_filter)
+
+        self.available_listbox = self.themed_listbox(left_frame)
+        self.available_listbox.pack(fill="both", expand=True, padx=5, pady=5)
+        self.available_listbox.bind("<Double-Button-1>", self.add_selected_node)
+
+        # RIGHT SIDE
+        right_frame = ctk.CTkFrame(grinding_window)
+        right_frame.pack(side="right", fill="y", padx=10, pady=10)
+
+        ctk.CTkLabel(right_frame, text="Selected Grinding Nodes").pack(anchor="w", padx=5)
+        self.selected_listbox = self.themed_listbox(right_frame)
+        self.selected_listbox.pack(fill="both", expand=True, padx=5, pady=(5, 0))
+        self.selected_listbox.bind("<Double-Button-1>", self.remove_selected_node)
+
+        btn_frame = ctk.CTkFrame(right_frame)
+        btn_frame.pack(pady=10)
+        ctk.CTkButton(btn_frame, text="Import", command=self.import_grinding).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Export", command=self.export_grinding).pack(side="left", padx=5)
+
+        self.update_grinding_filter()
+        self.refresh_selected_nodes()
+
+    def select_grinding_node(self, _event=None):
+        selection = self.available_listbox.curselection()
+        if not selection:
+            return
+
+        index = selection[0]
+        item_text = self.available_listbox.get(index)
+        key = int(item_text.split("|")[-1].strip())
+        self.grinding_entries["keys"].append(key)
+        self.available_listbox.delete(index)
+        self.selected_listbox.insert(END, item_text)
+
+    def deselect_grinding_node(self, _event=None):
+        selection = self.selected_listbox.curselection()
+        if not selection:
+            return
+
+        index = selection[0]
+        item_text = self.selected_listbox.get(index)
+        key = int(item_text.split("|")[-1].strip())
+        self.grinding_entries["keys"].remove(key)
+        self.selected_listbox.delete(index)
+        self.available_listbox.insert(END, item_text)
+
+    def update_grinding_filter(self, _event=None):
+        search = self.search_var.get().lower()
+        self.available_listbox.delete(0, END)
+
+        for key, name in self.all_nodes:
+            if key not in self.grinding_entries["keys"] and (search in name.lower() or search in str(key)):
+                self.available_listbox.insert(END, f"{name} | {key}")
+
+    def add_node_to_selected_nodes(self, key: int):
+        key_to_label = dict(self.all_nodes)
+        if key not in key_to_label:
+            return
+
+        if key not in self.grinding_entries["keys"]:
+            self.grinding_entries["keys"].append(key)
+
+        self.grinding_entries["keys"].sort(key=lambda k: key_to_label[k])
+        self.refresh_selected_nodes()
+
+    def add_selected_node(self, _event):
+        selection = self.available_listbox.get(ACTIVE)
+        if "|" in selection:
+            key = int(selection.split("|")[-1].strip())
+            self.add_node_to_selected_nodes(key)
+
+    def remove_selected_node(self, _event):
+        selection = self.selected_listbox.get(ACTIVE)
+        if "|" in selection:
+            key = int(selection.split("|")[-1].strip())
+            if key in self.grinding_entries["keys"]:
+                self.grinding_entries["keys"].remove(key)
+                self.update_grinding_filter()
+                self.refresh_selected_nodes()
+
+    def refresh_selected_nodes(self):
+        self.selected_listbox.delete(0, END)
+        for key in self.grinding_entries["keys"]:
+            name = self.node_lookup.get(key, "Unknown")
+            self.selected_listbox.insert(END, f"{name} | {key}")
+
+        if self.grinding_entries["keys"]:
+            self.grinding_state = WidgetState.Ready
+            self.grinding_status.configure(text=self.grinding_state.name, text_color="green")
+        else:
+            self.grinding_state = WidgetState.Optional
+            default_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
+            self.grinding_status.configure(text=self.grinding_state.name, text_color=default_color)
+
+        self.grinding_status.update()
+
+    def import_grinding(self):
+        path = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json")])
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                keys = json.load(f).get("keys", [])
+
+            self.grinding_entries["keys"].clear()
+            self.selected_listbox.delete(0, END)
+
+            for key in keys:
+                self.add_node_to_selected_nodes(key)
+
+            self.grinding_status.configure(text="Imported")
+        except Exception:
+            self.grinding_status.configure(text="Import Failed")
+
+    def export_grinding(self):
+        path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON Files", "*.json")])
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"keys": self.grinding_entries["keys"]}, f, indent=2)
+            self.grinding_status.configure(text="Exported")
+        except Exception:
+            self.grinding_status.configure(text="Export Failed")
 
     def setup_lodging(self):
         lodging_window = ctk.CTkToplevel(self)
@@ -454,7 +671,6 @@ class EmpireOptimizerApp(ctk.CTk):
 
         self.update_optimize_button_state()
 
-
     def browse_outpath(self):
         file_path = filedialog.askdirectory()
         if file_path:
@@ -573,6 +789,7 @@ class EmpireOptimizerApp(ctk.CTk):
             else {}
         )
 
+        grindTakenList = self.grinding_entries.get("keys", [])
         data = generate_reference_data(config, prices, modifiers, lodging_specifications, grindTakenList)
         graph_data = generate_graph_data(data)
         prob = optimize(data, graph_data)

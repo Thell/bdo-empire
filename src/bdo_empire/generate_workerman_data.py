@@ -20,7 +20,7 @@ def get_workerman_json(workers, data, lodging):
         if not data["exploration"][town_key]["is_worker_npc_town"]:
             continue
         townname = region_strings[region_key]
-        lodgingP2W[region_key] = lodging[townname]
+        lodgingP2W[region_key] = lodging[townname]["bonus"]
     workerman_json = {
         "activateAncado": False,
         "lodgingP2W": lodgingP2W,
@@ -28,7 +28,7 @@ def get_workerman_json(workers, data, lodging):
         "farmingEnable": False,
         "farmingProfit": 0,
         "farmingBareProfit": 0,
-        "grindTakenList": [],
+        "grindTakenList": data["force_active_node_ids"],
     }
     return workerman_json
 
@@ -115,12 +115,15 @@ def extract_solution(prob) -> tuple[dict, dict, dict]:
     for k, v in prob.variablesDict().items():
         if not round(v.varValue) >= 1:
             continue
+        # print(f"{k}: {v.varValue}")
         if k.startswith("flow_lodging_") and "_to_" not in k:
             lodging_vars[k.replace("flow_", "")] = v
         elif "_on_plant_" in k:
             origin_vars[k.split("_")[4]] = k.split("_")[1]
-        elif k.startswith("x_waypoint") or k == "x_town_1343":
+        elif k.startswith(("x_waypoint", "x_town")):
             waypoint_vars[k.replace("x_", "")] = v
+        else:
+            print(f"Did not capture variable: {k}")
     return lodging_vars, origin_vars, waypoint_vars
 
 
@@ -187,10 +190,16 @@ def generate_workerman_data(
 
     graph = generate_graph(graph_data, prob)
     lodging_vars, origin_vars, waypoint_vars = extract_solution(prob)
+    for var in [lodging_vars] + [origin_vars] + [waypoint_vars]:
+        print(var)
+
     solution = process_solution(origin_vars, data, graph_data, graph)
     calculated_value, distances, origin_cost, outputs, workerman_user_workers = solution
     workerman_ordered_workers = order_workerman_workers(graph, workerman_user_workers, distances)
     workerman_json = get_workerman_json(workerman_ordered_workers, data, lodging)
+
+    # Filter zero cost waypoints (towns) from waypoints
+    waypoint_vars = {k: v for k, v in waypoint_vars.items() if graph_data["V"][k].cost > 0}
 
     counts: dict = {"origins": len(origin_vars), "waypoints": len(waypoint_vars)}
     counts["by_regions"] = {
