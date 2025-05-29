@@ -10,10 +10,11 @@ It
   - uses workers of level 40.
   - uses workers with optimum skills learned.
   - assumes all drops are sent to storage with zero cp cost (Calpheon).
+  - accounts for workshop _lodging cost_ but not profits or the workshop itself.
+  - accounts for grinding node connections
 
 It does not
   - account for cp spent outside of the Node Empire.
-  - account for grind nodes or 'fixed' nodes. (TODO)
 
 This program uses the HiGHS High Performance Optimization Software to solve
 the MIP using branch and cut. The parameters chosen guarantee the result is
