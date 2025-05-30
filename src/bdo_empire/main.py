@@ -451,7 +451,7 @@ class EmpireOptimizerApp(ctk.CTk):
 
         def make_validate_handler(var, status_label, prepaid_var, town):
             def handler(_e):
-                self.validate_lodging(var, status_label, prepaid_var, town)
+                self.validate_and_refresh_lodging(var, status_label, prepaid_var, town)
             return handler
 
         self.lodging_entries = {}
@@ -460,6 +460,7 @@ class EmpireOptimizerApp(ctk.CTk):
             bonus = values["bonus"]
             reserved = values["reserved"]
             prepaid = values["prepaid"]
+            bonus_ub = values["bonus_ub"]
 
             label = ctk.CTkLabel(scrollable_frame, text=town)
             label.grid(row=row, column=0, padx=10, pady=5)
@@ -491,8 +492,15 @@ class EmpireOptimizerApp(ctk.CTk):
                 "bonus": bonus_var,
                 "reserved": reserved_var,
                 "prepaid": prepaid_var,
+                "bonus_ub": bonus_ub,
+                "status": status_label,
             }
+            # Force label refresh for re-open
+            self.validate_lodging(bonus_var, status_label, prepaid_var, town)
             row += 1
+
+        # Force label refresh for re-open
+        self.recompute_total_prepaid_cp()
 
         import_button = ctk.CTkButton(lodging_window, text="Import", command=self.import_lodging)
         import_button.grid(row=1, column=0, padx=10, pady=10)
@@ -541,6 +549,10 @@ class EmpireOptimizerApp(ctk.CTk):
             )
         else:
             self.cp_prepaid_label.configure(text="")
+
+    def validate_and_refresh_lodging(self, entry_var, label_widget, cost_label, town):
+        self.validate_lodging(entry_var, label_widget, cost_label, town)
+        self.recompute_total_prepaid_cp()
 
     def validate_lodging(self, entry_var, label_widget, cost_label, town):
         value = entry_var.get()
@@ -595,16 +607,13 @@ class EmpireOptimizerApp(ctk.CTk):
                 lodging_specifications[town]["reserved"] = 0
                 lodging_specifications[town]["prepaid"] = 0
                 cost_label.set("0")
-                label_widget.configure(text="Valid", text_color="green")
+                label_widget.configure(text="Optional", text_color="white")
 
         except Exception as e:
             print("Exception in validate_lodging:", e)
             label_widget.configure(text="Invalid", text_color="red")
             cost_label.set("—")
             return
-
-        # Always refresh total CP label based on valid specs
-        self.recompute_total_prepaid_cp()
 
     def save_lodging_data(self, lodging_window):
         # Defensive sync from UI in case of stray edits or skipped validations
@@ -630,10 +639,10 @@ class EmpireOptimizerApp(ctk.CTk):
             self.lodging_state = WidgetState.Ready
             self.lodging_status.configure(text=self.lodging_state.name, text_color="green")
         else:
-            self.lodging_state = WidgetState.Required
-            self.lodging_status.configure(text=self.lodging_state.name, text_color="gray")
-
+            self.lodging_state = WidgetState.Optional
+            self.lodging_status.configure(text=self.lodging_state.name, text_color="white")
         self.lodging_status.update()
+
 
     def import_lodging(self):
         file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
@@ -646,6 +655,14 @@ class EmpireOptimizerApp(ctk.CTk):
                         self.lodging_entries[town]["bonus"].set(value["bonus"])
                         self.lodging_entries[town]["reserved"].set(value["reserved"])
                         self.lodging_entries[town]["prepaid"].set(str(value["prepaid"]))
+                        self.lodging_entries[town]["bonus_ub"] = value["bonus_ub"]
+                        self.validate_lodging(
+                            self.lodging_entries[town]["bonus"],
+                            self.lodging_entries[town]["status"],
+                            self.lodging_entries[town]["prepaid"],
+                            town
+                        )
+                self.recompute_total_prepaid_cp()
                 self.update_optimize_button_state()
 
     def export_lodging(self):
@@ -659,10 +676,12 @@ class EmpireOptimizerApp(ctk.CTk):
                     bonus = int(values["bonus"].get())
                     reserved = int(values["reserved"].get())
                     prepaid = int(values["prepaid"].get())
+                    bonus_ub = values["bonus_ub"]
                     export_data[town] = {
                         "bonus": bonus,
                         "reserved": reserved,
-                        "prepaid": prepaid
+                        "prepaid": prepaid,
+                        "bonus_ub": bonus_ub
                     }
                 except ValueError as e:
                     print(f"Skipping {town} due to invalid data: {e}")
