@@ -5,6 +5,7 @@ from pulp import HiGHS, LpVariable, lpSum, LpProblem, LpMaximize
 from bdo_empire.generate_graph_data import Arc, GraphData, Node, NodeType as NT
 from bdo_empire.optimize_par import solve_par
 
+SUPERROOT = 99999
 
 def filter_arcs(v: Node, regionflow: str, arcs: list[Arc]) -> list[Arc]:
     return [
@@ -43,14 +44,12 @@ def create_problem(config: dict, G: GraphData) -> LpProblem:
     for arc in G["E"].values():
         for region in set(arc.source.regions).intersection(set(arc.destination.regions)):
             key = f"regionflow_{region.id}"
-            ub = arc.ub if arc.source.type in [NT.region, NT.𝓢, NT.𝓣, NT.lodging, NT.super_root] else region.ub
+            ub = arc.ub if arc.source.type in [NT.region, NT.𝓢, NT.𝓣, NT.lodging] else region.ub
             cat = "Binary" if arc.source.type in [NT.𝓢, NT.plant] else "Integer"
-            if arc.source.type == NT.𝓢 and arc.destination.isForceActive:
-                arc.vars[key] = LpVariable(f"{key}_on_{arc.name()}", ub, ub, cat)
-            if arc.source.type == NT.super_root and arc.destination.type ==  NT.𝓣:
-                arc.vars[key] = LpVariable(f"{key}_on_{arc.name()}", ub, ub, cat)
-            else:
-                arc.vars[key] = LpVariable(f"{key}_on_{arc.name()}", 0, ub, cat)
+            if str(SUPERROOT) in key:
+                cat = "Integer"
+                ub = len(G["F"])
+            arc.vars[key] = LpVariable(f"{key}_on_{arc.name()}", 0, ub, cat)
 
     # Objective
     prize_values = [
@@ -58,6 +57,7 @@ def create_problem(config: dict, G: GraphData) -> LpProblem:
         for plant in G["P"].values()
         for region in plant.regions
         for arc in plant.inbound_arcs
+        if region.id != str(SUPERROOT)
     ]
     prob += lpSum(prize_values), "ObjectiveFunction"
 
@@ -65,13 +65,8 @@ def create_problem(config: dict, G: GraphData) -> LpProblem:
     prob += lpSum(v.cost * v.vars["x"] for v in G["V"].values()) <= cost, "TotalCost"
 
     for region in G["R"].values():
-        vars = [lodge.vars["x"] for lodge in G["L"].values() if lodge.regions[0] == region]
-        prob += lpSum(vars) <= 1, f"lodging_{region.id}"
-
-    if len(G["F"]) > 0:
-        for forced_node in G["F"]:
-            print(f"Setting forced node: {forced_node}")
-            prob += G["V"][forced_node].vars["x"] == 1, f"forced_{forced_node}"
+        lodging_vars = [lodge.vars["x"] for lodge in G["L"].values() if lodge.regions[0] == region]
+        prob += lpSum(lodging_vars) <= 1, f"lodging_{region.id}"
 
     for v in G["V"].values():
         if v.type not in [NT.𝓢, NT.𝓣]:
@@ -91,6 +86,15 @@ def create_problem(config: dict, G: GraphData) -> LpProblem:
         else:
             prob += lpSum(in_neighbors) + lpSum(out_neighbors) - 2 * node.vars["x"] >= 0
         prob += lpSum(out_neighbors) >= node.vars["x"]
+
+    # Force activated flow...
+    if len(G["F"]):
+        plants_for_fixed = [G["P"][f"plant_fixed_{v.key}"] for v in G["F"].values()]
+        for plant in plants_for_fixed:
+            # Force flow from source to plant
+            for arc in plant.inbound_arcs:
+                prob += arc.vars[f"regionflow_{str(SUPERROOT)}"] == 1
+            prob += plant.vars["x"] == 1
 
     # Edge case handling.
     # If region 619 is active it must be connected to a near town.

@@ -11,7 +11,7 @@ It
   - uses workers with optimum skills learned.
   - assumes all drops are sent to storage with zero cp cost (Calpheon).
   - accounts for workshop _lodging cost_ but not profits or the workshop itself.
-  - ~~accounts for grinding node connections~~ Work In Progress
+  - accounts for grinding node connections
 
 It does not
   - account for cp spent outside of the Node Empire.

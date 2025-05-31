@@ -11,6 +11,8 @@ from tabulate import tabulate
 import bdo_empire.data_store as ds
 from bdo_empire.generate_graph_data import GraphData
 
+SUPERROOT = 99999
+
 
 def get_workerman_json(workers, data, lodging):
     """Populate and return a standard 'dummy' instance of the workerman dict."""
@@ -88,22 +90,29 @@ def generate_graph(graph_data: GraphData, prob):
     for var_key, var in prob.variablesDict().items():
         if not round(var.varValue) >= 1:
             continue
-        exclude = any(keyword in var_key for keyword in exclude_keywords)
-        if exclude:
+        if any(keyword in var_key for keyword in exclude_keywords):
+            continue
+        if not ("regionflow_" in var_key and "_on_" in var_key):
             continue
 
-        u, v = None, None
-        if "regionflow_" in var_key and "_on_" in var_key:
-            tmp = var_key.split("_on_")
-            tmp = tmp[1].split("_to_")
-            u = tmp[0]
-            v = tmp[1]
-        else:
-            continue
+        tmp = var_key.split("_on_")
+        tmp = tmp[1].split("_to_")
+        u = tmp[0]
+        v = tmp[1]
 
         source, destination = u, v
         weight = graph_data["V"][source].cost
-        graph.add_edge(destination.split("_")[1], source.split("_")[1], weight=weight)
+        # print(f"{source=} => {destination=} => {weight=}")
+
+        source = source.split('_')[-1]
+        destination = destination.split('_')[-1]
+        graph.add_edge(destination, source, weight=weight)
+
+    isolated = nx.isolates(graph)
+    graph.remove_nodes_from(isolated)
+    if '99999' in graph.nodes:
+        graph.remove_node('99999')
+    print(f"All nodes: {sorted([int(v) for v in graph.nodes])}")
 
     return graph
 
@@ -115,10 +124,14 @@ def extract_solution(prob) -> tuple[dict, dict, dict]:
     for k, v in prob.variablesDict().items():
         if not round(v.varValue) >= 1:
             continue
+        # print(f"{k=} => {v.varValue=}")
+
         if k.startswith("flow_lodging_") and "_to_" not in k:
             lodging_vars[k.replace("flow_", "")] = v
         elif "_on_plant_" in k:
-            origin_vars[k.split("_")[4]] = k.split("_")[1]
+            root, plant = [e for e in k.split("_") if e.isdigit()][:2]
+            if int(root) != SUPERROOT:
+                origin_vars[plant] = root
         elif k.startswith(("x_waypoint", "x_town")):
             waypoint_vars[k.replace("x_", "")] = v
     return lodging_vars, origin_vars, waypoint_vars
@@ -126,7 +139,7 @@ def extract_solution(prob) -> tuple[dict, dict, dict]:
 
 def process_solution(origin_vars: dict, data: dict, graph_data: GraphData, graph: nx.DiGraph):
     all_pairs = dict(nx.all_pairs_bellman_ford_path_length(graph, weight="weight"))
-    region_to_town = {v["region_key"]: k for k, v in data["exploration"].items() if v["is_town"]}
+    region_to_town = {v["region_key"]: k for k, v in data["exploration"].items() if v["is_base_town"]}
 
     calculated_value = 0
     distances = []
@@ -169,8 +182,9 @@ def process_solution(origin_vars: dict, data: dict, graph_data: GraphData, graph
 def print_summary(outputs, counts: dict, costs: dict, total_value: float):
     """Print town, origin, worker summary report."""
     outputs = natsort.natsorted(outputs, key=lambda x: (x["warehouse"], x["node"]))
-    colalign = ("right", "right", "left", "right", "right")
-    print(tabulate(outputs, headers="keys", colalign=colalign))
+    # colalign = ("right", "right", "left", "right", "right")
+    # print(tabulate(outputs, headers="keys", colalign=colalign))
+    print(tabulate(outputs, headers="keys"))
     print("By Town:\n\n", tabulate([[k, v] for k, v in counts["by_regions"].items()]), "\n")
     print("  Lodging cost:", costs["lodgings"])
     print("  Worker Nodes:", counts["origins"], "cost:", costs["origins"])
@@ -187,8 +201,9 @@ def generate_workerman_data(
 
     graph = generate_graph(graph_data, prob)
     lodging_vars, origin_vars, waypoint_vars = extract_solution(prob)
-    for var in [lodging_vars] + [origin_vars] + [waypoint_vars]:
-        print(var)
+    # print(f"{lodging_vars=}")
+    # print(f"{origin_vars=}")
+    # print(f"{waypoint_vars=}")
 
     solution = process_solution(origin_vars, data, graph_data, graph)
     calculated_value, distances, origin_cost, outputs, workerman_user_workers = solution
@@ -202,14 +217,21 @@ def generate_workerman_data(
     counts["by_regions"] = {
         str(data["region_strings"][int(k)]): v
         for k, v in Counter(origin_vars.values()).most_common()
+        if int(k) != SUPERROOT
     }
     costs = {
-        "lodgings": sum(graph_data["V"][k].cost for k in lodging_vars.keys()),
+        "lodgings": sum(graph_data["V"][k].cost for k in lodging_vars),
         "origins": origin_cost,
-        "waypoints": sum(graph_data["V"][k].cost for k in waypoint_vars.keys()),
+        "waypoints": sum(graph_data["V"][k].cost for k in waypoint_vars),
     }
+    # print(f"{counts=}")
+    # print(f"{costs=}")
+    # print(f"{calculated_value=}\n")
 
     print_summary(outputs, counts, costs, calculated_value)
+    if data["force_active_node_ids"]:
+        print(f"There are {len(data['force_active_node_ids'])}",
+              "force activated node connections included in waypoints.\n")
     if "town_1343" in waypoint_vars.keys():
         print("Ancado Inner Harbor active (cost 1) and included with waypoints.")
 

@@ -6,7 +6,7 @@ from typing import Any, TypedDict
 
 import networkx as nx
 
-SUPERROOT = 99999
+SUPERROOT = 99999 # A special region node for force activated nodes
 
 class GraphData(TypedDict):
     """GraphData class is passed to the model creator for the solver."""
@@ -26,7 +26,6 @@ class NodeType(IntEnum):
     town = auto()
     region = auto()
     lodging = auto()
-    super_root = auto()
     𝓣 = auto()
 
     INVALID = auto()
@@ -62,7 +61,6 @@ class Node:
         self.isTown = type == NodeType.town
         self.isWaypoint = type == NodeType.waypoint
         self.isRegion = type == NodeType.region
-        self.isSuperRoot = type == NodeType.super_root
         self.isForceActive = False
 
     def name(self) -> str:
@@ -163,10 +161,8 @@ def add_arcs(nodes: dict[str, Node], arcs: dict[tuple, Arc], node_a: Node, node_
         (NodeType.waypoint, NodeType.town): (node_b.ub, node_a.ub),
         (NodeType.town, NodeType.town): (node_b.ub, node_a.ub),
         (NodeType.town, NodeType.region): (node_b.ub, 0),
-        (NodeType.town, NodeType.super_root): (node_b.ub, 0),
         (NodeType.region, NodeType.lodging): (node_b.ub, 0),
         (NodeType.lodging, NodeType.𝓣): (node_a.ub, 0),
-        (NodeType.super_root, NodeType.𝓣): (node_a.ub, 0),
     }
 
     ub, reverse_ub = arc_configurations.get((node_a.type, node_b.type), (1, 0))
@@ -182,8 +178,6 @@ def add_arcs(nodes: dict[str, Node], arcs: dict[tuple, Arc], node_a: Node, node_
 
             if arc.destination.type is NodeType.lodging:
                 arc.destination.regions = [arc.source]
-            elif arc.destination.type is NodeType.super_root:
-                arc.destination.regions = [arc.destination]
 
 
 def get_sparsified_link_graph(data: dict[str, Any]):
@@ -206,7 +200,7 @@ def get_sparsified_link_graph(data: dict[str, Any]):
         if (
             nx.degree(link_graph, node) == 1
             and node_data["type"] is not NodeType.plant
-            and node not in data["force_active_node_keys"]
+            and node not in data["force_active_node_ids"]
         ):
             removal_nodes.append(node)
     if removal_nodes:
@@ -259,7 +253,10 @@ def get_node(nodes, node_id: str, node_type: NodeType, data: dict[str, Any], **k
             cost = 0
         case NodeType.plant:
             ub = 1
-            cost = data["exploration"][int(node_id)]["need_exploration_point"]
+            if "fixed" in node_id:
+                cost = 0
+            else:
+                cost = data["exploration"][int(node_id)]["need_exploration_point"]
         case NodeType.waypoint | NodeType.town:
             ub = data["config"]["max_waypoint_ub"]
             cost = data["exploration"][int(node_id)]["need_exploration_point"]
@@ -277,10 +274,6 @@ def get_node(nodes, node_id: str, node_type: NodeType, data: dict[str, Any], **k
                 "Lodging nodes require 'ub', 'lb' 'cost' and 'root' kwargs."
             )
             regions = [root]
-        case NodeType.super_root:
-            lb = len(data["force_active_node_keys"])
-            ub = lb
-            cost = 0
         case NodeType.𝓣:
             ub = data["max_ub"]
             cost = 0
@@ -290,13 +283,51 @@ def get_node(nodes, node_id: str, node_type: NodeType, data: dict[str, Any], **k
 
     node = Node(str(node_id), node_type, ub, lb, cost, regions)
     if node.key not in nodes:
-        if node_id in data["force_active_node_keys"]:
-            node.isForceActive = True
         if node.type is NodeType.region:
             node.regions = [node]
         nodes[node.key] = node
 
     return nodes[node.key]
+
+
+def process_force_activations(nodes: dict[str, Node], arcs: dict[tuple, Arc], data: dict[str, Any]):
+    """ Process forced activation setup.
+
+    - Introduce fixed_${waypoint} for each waypoint in force_active_node_ids between source and the waypoint
+    - Introduce region_${SUPERROOT} with links from all basetown nodes and to the sink.
+    """
+    exploration = data["exploration"]
+    num_force_active_nodes = len(data["force_active_node_ids"])
+
+    source_node = get_node(nodes, "𝓢", NodeType.𝓢, data)
+    sink_node = get_node(nodes, "𝓣", NodeType.𝓣, data)
+
+    # NOTE: Because super root is a region we must have a lodging specification in data["lodging_data"]
+    #       it might be better to do this in the generate_reference_data (?)
+    # It will need a single lodging entry with ub == len(G["F"]) and cost 0.
+    data["lodging_data"][SUPERROOT] = {
+        "max_ub": num_force_active_nodes,
+        "bounds_costs": [(num_force_active_nodes, 0)]
+    }
+    superroot_node = get_node(nodes, str(SUPERROOT), NodeType.region, data, ub=num_force_active_nodes)
+
+    # provide links from _all_ base town nodes to the super root regardlesss if they have lodging.
+    for node_key, node in nodes.items():
+        if not node.type in [NodeType.waypoint, NodeType.town]:
+            continue
+        if not exploration[int(node.id)]["is_base_town"]:
+            continue
+        add_arcs(nodes, arcs, node, superroot_node)
+
+    add_arcs(nodes, arcs, superroot_node, sink_node)
+
+    for node_key, node in nodes.copy().items():
+        if not node.isForceActive:
+            continue
+        print(f"  creating fixed node for {node.name()}.")
+        fixed_node = get_node(nodes, f"fixed_{node_key}", NodeType.plant, data)
+        add_arcs(nodes, arcs, source_node, fixed_node)
+        add_arcs(nodes, arcs, fixed_node, node)
 
 
 def process_links(nodes: dict[str, Node], arcs: dict[tuple, Arc], data: dict[str, Any]):
@@ -317,25 +348,16 @@ def process_links(nodes: dict[str, Node], arcs: dict[tuple, Arc], data: dict[str
 
             # `get_link_nodes()` orders the nodes by type.
             start_node, end_node = get_link_nodes(nodes, origin_key, destination_key, data)
+            if int(start_node.id) in data["force_active_node_ids"]:
+                print(f"  processing_links: Setting node {start_node.name()} to force active.")
+                start_node.isForceActive = True
+
             add_arcs(nodes, arcs, start_node, end_node)
 
             if start_node.isPlant:
                 process_plant(nodes, arcs, start_node, data)
             if end_node.isTown:
                 process_town(nodes, arcs, end_node, data)
-
-            # Special case handling for forced active nodes
-            if start_node.isForceActive:
-                process_force_active(nodes, arcs, start_node, data)
-            if end_node.isForceActive:
-                process_force_active(nodes, arcs, end_node, data)
-
-
-def process_force_active(nodes: dict[str, Node], arcs: dict[tuple, Arc], force_active_node: Node, data: dict):
-    """Add forced active node arc between source and node."""
-    # NOTE: A forced active node exits flow through any basetown node using a special virtual
-    #       region node (connected to all basetowns)
-    add_arcs(nodes, arcs, nodes["𝓢"], force_active_node)
 
 
 def process_plant(nodes: dict[str, Node], arcs: dict[tuple, Arc], plant: Node, data: dict[str, Any]):
@@ -408,24 +430,14 @@ def nearest_n_towns(data: dict[str, Any], G: GraphData, nearest_n: int):
         if node.isWaypoint or node.isTown:
             distances = []
             for region in G["R"].values():
+                if region.id == str(SUPERROOT):
+                    continue
                 town_id = data["affiliated_town_region"][int(region.id)]
                 distances.append((region, all_pairs[node.id][str(town_id)]))
             nearest_towns_dist[node_id] = sorted(distances, key=lambda x: x[1])[:nearest_n]
             nearest_towns[node_id] = [w for w, _ in nearest_towns_dist[node_id]]
 
     return nearest_towns
-
-
-def inject_super_root(nodes: dict[str, Node], arcs: dict[tuple, Arc], data: dict[str, Any]):
-
-    # The arcs from Source to each super terminal has already been added with lb=0, ub=1
-    # but the sink flows must be established from all base towns.
-    # Final result should be lb == ub == |forced|.
-    super_root_node = get_node(nodes, str(SUPERROOT), NodeType.super_root, data)
-    basetowns = [w for w in data["exploration"].values() if w["is_base_town"]]
-    for basetown in basetowns:
-        basetown_node = get_node(nodes, basetown["waypoint_key"], NodeType.town, data)
-        add_arcs(nodes, arcs, basetown_node, super_root_node)
 
 
 def finalize_regions(data: dict[str, Any], G: GraphData, nearest_n: int):
@@ -436,23 +448,26 @@ def finalize_regions(data: dict[str, Any], G: GraphData, nearest_n: int):
     # When forced nodes are present all waypoints must be able to carry the super root flow
     nearest_towns = nearest_n_towns(data, G, nearest_n)
 
-    has_forced = len(data["force_active_node_keys"])
-    super_root_node = get_node(G["V"], str(SUPERROOT), NodeType.super_root, data) if has_forced else None
-    if super_root_node is not None:
-        G["R"][super_root_node.key] = super_root_node
-
     for v in G["V"].values():
         if v.type in [NodeType.𝓢, NodeType.𝓣]:
             v.regions = list(G["R"].values())
-            # if super_root_node is not None:
-            #     v.regions.append(super_root_node)
         elif v.isWaypoint or v.isTown:
             v.regions = list(nearest_towns[v.key])
-            if super_root_node is not None:
-                v.regions.append(super_root_node)
         elif v.isPlant:
             v.regions = [w for w in G["R"].values() if w.id in v.region_prizes.keys()]
 
+    # ensure super root is a region for all waypoints and for plant nodes of force activated nodes
+    # since it wont be in the nearest_n_towns of any node.
+    if len(G["F"]):
+        super_root_node = G["V"][f"region_{str(SUPERROOT)}"]
+        for v in G["V"].values():
+            if v.type in [NodeType.waypoint, NodeType.town]:
+                v.regions += [super_root_node]
+            if v.isForceActive:
+                plant_for_force_active = G["P"][f"plant_fixed_{v.key}"]
+                plant_for_force_active.regions += [super_root_node]
+
+    return
 
 def generate_graph_data(data):
     """Generate and return a GraphData dict composing the LP empire data."""
@@ -464,11 +479,7 @@ def generate_graph_data(data):
     get_node(nodes, "𝓢", NodeType.𝓢, data)
     get_node(nodes, "𝓣", NodeType.𝓣, data)
     process_links(nodes, arcs, data)
-
-    # When force active nodes are present SUPERROOT node must be introduced
-    # between each basetown node and sink.
-    if data["force_active_node_keys"]:
-        inject_super_root(nodes, arcs, data)
+    process_force_activations(nodes, arcs, data)
 
     G: GraphData = {
         "V": dict(sorted(nodes.items(), key=lambda item: item[1].type)),
