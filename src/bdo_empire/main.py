@@ -804,11 +804,10 @@ class EmpireOptimizerApp(ctk.CTk):
         config["solver"] = solver_config
 
         prices = json.loads(Path(self.prices_entry.get()).read_text(encoding="utf-8"))["effectivePrices"]
-        modifiers = (
-            json.loads(Path(self.modifiers_entry.get()).read_text(encoding="utf-8"))["regionModifiers"]
-            if self.modifiers_entry.get()
-            else {}
-        )
+        modifiers = {}
+        if self.modifiers_entry.get():
+            data = json.loads(Path(self.modifiers_entry.get()).read_text(encoding="utf-8"))
+            modifiers = data.get("regionResources") or data.get("regionModifiers", {})
 
         grindTakenList = self.grinding_entries.get("keys", [])
         data = generate_reference_data(config, prices, modifiers, lodging_specifications, grindTakenList)
