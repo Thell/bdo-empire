@@ -22,9 +22,9 @@ from bdo_empire.optimize import optimize
 optimize_config = {
     "name": "Empire",
     "budget": 0,
-    "top_n": 4,
-    "nearest_n": 5,
-    "max_waypoint_ub": 25,
+    "top_n": 6,
+    "nearest_n": 7,
+    "max_waypoint_ub": 17,
     "solver_config": {}
 }
 
