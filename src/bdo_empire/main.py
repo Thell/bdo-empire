@@ -5,6 +5,7 @@ import json
 from math import inf
 from pathlib import Path
 from random import randint
+from threading import Thread
 from tkinter import ACTIVE, DISABLED, END, NORMAL, filedialog, Listbox
 
 import customtkinter as ctk
@@ -16,7 +17,9 @@ from bdo_empire.generate_graph_data import generate_graph_data
 from bdo_empire.generate_reference_data import generate_reference_data
 from bdo_empire.generate_reference_data import get_region_lodging_bounds_costs
 from bdo_empire.generate_workerman_data import generate_workerman_data
-from bdo_empire.optimize import optimize
+from bdo_empire.optimize_highspy import optimize as optimize_highspy
+from bdo_empire.solver_highspy import SolverController
+
 
 
 optimize_config = {
@@ -30,12 +33,13 @@ optimize_config = {
 
 
 solver_config = {
-    "num_processes": max(1, cpu_count(logical=False) - 1), # type: ignore
+    "num_threads": max(1, cpu_count(logical=False) - 1), # type: ignore
     "mip_rel_gap": 1e-4,
     "mip_feasibility_tolerance": 1e-4,
     "primal_feasibility_tolerance": 1e-4,
-    "time_limit": inf,
     "random_seed": randint(0, 2147483647),
+    "time_limit": inf,
+    "mip_improvement_timeout": inf
 }
 
 
@@ -119,7 +123,7 @@ class EmpireOptimizerApp(ctk.CTk):
         super().__init__()
 
         self.title(f"Empire Optimizer - {get_version()}")
-        self.geometry("660x350")
+        self.geometry("720x350")
 
         self.data_state = WidgetState.Required
         self.cp_state = WidgetState.Required
@@ -130,11 +134,13 @@ class EmpireOptimizerApp(ctk.CTk):
         self.outpath_state = WidgetState.Required
         self.optimize_state = WidgetState.Waiting
 
-        self.lodging_entries = {}
         self.config_entries = {}
         self.grinding_entries = {}
+        self.lodging_entries = {}
         self.node_lookup = self.load_node_name_lookup()
         self.all_nodes = sorted(self.node_lookup.items(), key=lambda x: x[1])
+
+        self.solver_controller = SolverController()
 
         self.create_widgets()
 
@@ -201,12 +207,17 @@ class EmpireOptimizerApp(ctk.CTk):
         self.outpath_status.grid(row=row, column=3, padx=10, pady=10)
 
         row += 1
+        self.optimize_stop_button = ctk.CTkButton(self, text="Stop", command=self.stop_optimization, state=DISABLED)
+        self.optimize_stop_button.grid(row=row, column=0, padx=10, pady=10)
         self.optimize_button = ctk.CTkButton(self, text="Optimize", command=self.optimize, state=DISABLED)
         self.optimize_button.grid(row=row, column=1, padx=10, pady=10)
-        self.optimize_status = ctk.CTkLabel(self, text=self.optimize_state.name)
-        self.optimize_status.grid(row=row, column=3, padx=10, pady=10)
         self.config_button = ctk.CTkButton(self, text="Config Solver", command=self.config_solver)
         self.config_button.grid(row=row, column=2, padx=10, pady=10)
+        self.optimize_status = ctk.CTkLabel(self, text=self.optimize_state.name)
+        self.optimize_status.grid(row=row, column=3, padx=10, pady=10)
+        ctktt(self.optimize_stop_button, message="Stop solver and use current solution.")
+        ctktt(self.optimize_button, message="Start solver using options from config.")
+        ctktt(self.config_button, message="Configure solver options.")
 
     def themed_listbox(self, master):
         appearance = ctk.get_appearance_mode()
@@ -643,7 +654,6 @@ class EmpireOptimizerApp(ctk.CTk):
             self.lodging_status.configure(text=self.lodging_state.name, text_color="white")
         self.lodging_status.update()
 
-
     def import_lodging(self):
         file_path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
         if file_path:
@@ -768,7 +778,7 @@ class EmpireOptimizerApp(ctk.CTk):
     def config_solver(self):
         config_window = ctk.CTkToplevel(self)
         config_window.title("Solver Configuration")
-        config_window.geometry("400x250")
+        config_window.geometry("400x270")
         config_window.update()
         config_window.grab_set()
 
@@ -787,14 +797,16 @@ class EmpireOptimizerApp(ctk.CTk):
         config_window.protocol("WM_DELETE_WINDOW", lambda: self.save_config_data(config_window))
 
     def save_config_data(self, config_window):
-        int_fields = ["num_processes", "random_seed"]
+        int_fields = ["num_threads", "random_seed"]
         for setting, var in self.config_entries.items():
             value = var.get()
             solver_config[setting] = int(value) if setting in int_fields else float(value)
         config_window.destroy()
 
-    def optimize(self):
+    def _optimize_worker(self):
         print("Begin optimization...")
+        self.solver_controller = SolverController()
+
         self.optimize_state = WidgetState.Running
         self.optimize_status.configure(text=self.optimize_state.name, text_color="green")
         self.optimize_status.update()
@@ -812,7 +824,9 @@ class EmpireOptimizerApp(ctk.CTk):
         grindTakenList = self.grinding_entries.get("keys", [])
         data = generate_reference_data(config, prices, modifiers, lodging_specifications, grindTakenList)
         graph_data = generate_graph_data(data)
-        prob = optimize(data, graph_data)
+
+        prob = optimize_highspy(data, graph_data, controller=self.solver_controller)  # <-- pass controller
+
         workerman_json = generate_workerman_data(prob, lodging_specifications, data, graph_data)
 
         outpath = Path(self.outpath_entry.get())
@@ -825,6 +839,18 @@ class EmpireOptimizerApp(ctk.CTk):
         self.optimize_state = WidgetState.Waiting
         self.optimize_status.configure(text=self.optimize_state.name)
         self.optimize_status.update()
+        self.optimize_stop_button.configure(state=DISABLED)
+        self.optimize_button.configure(state=NORMAL)
+
+    def optimize(self):
+        self.optimize_button.configure(state=DISABLED)
+        self.optimize_stop_button.configure(state=NORMAL)
+        Thread(target=self._optimize_worker, daemon=True).start()
+
+    def stop_optimization(self):
+        if self.solver_controller:
+            print("Interrupt requested by user.")
+            self.solver_controller.stop()
 
 
 def main():

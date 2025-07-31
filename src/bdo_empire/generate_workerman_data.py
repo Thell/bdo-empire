@@ -3,9 +3,9 @@
 from collections import Counter
 import locale
 
+from highspy import Highs
 import natsort
 import networkx as nx
-from pulp import LpProblem
 from tabulate import tabulate
 
 import bdo_empire.data_store as ds
@@ -83,57 +83,55 @@ def order_workerman_workers(graph, user_workers: list[dict], solution_distances)
     return ordered_workers
 
 
-def generate_graph(graph_data: GraphData, prob):
+def generate_graph(graph_data: GraphData, model: Highs):
     graph = nx.DiGraph()
     exclude_keywords = ["lodging", "𝓢", "𝓣"]
-
-    for var_key, var in prob.variablesDict().items():
-        if not round(var.varValue) >= 1:
-            continue
-        if any(keyword in var_key for keyword in exclude_keywords):
-            continue
-        if not ("regionflow_" in var_key and "_on_" in var_key):
+    graph_cost = 0
+    for var_key in [v.name for v in model.getVariables() if int(round(model.variableValue(v))) >= 1]: # type: ignore
+        exclude = any(keyword in var_key for keyword in exclude_keywords)
+        if exclude:
             continue
 
-        tmp = var_key.split("_on_")
-        tmp = tmp[1].split("_to_")
-        u = tmp[0]
-        v = tmp[1]
+        u, v = None, None
+        if "regionflow_" in var_key and "_on_" in var_key:
+            tmp = var_key.split("_on_")
+            tmp = tmp[1].split("_to_")
+            u = tmp[0]
+            v = tmp[1]
+        else:
+            continue
 
         source, destination = u, v
         weight = graph_data["V"][source].cost
-        # print(f"{source=} => {destination=} => {weight=}")
-
-        source = source.split('_')[-1]
-        destination = destination.split('_')[-1]
-        graph.add_edge(destination, source, weight=weight)
+        graph_cost += weight
+        graph.add_edge(destination.split("_")[-1], source.split("_")[-1], weight=weight)
 
     isolated = nx.isolates(graph)
     graph.remove_nodes_from(isolated)
     if '99999' in graph.nodes:
         graph.remove_node('99999')
-    print(f"All nodes: {sorted([int(v) for v in graph.nodes])}")
+    # print(f"All nodes: {sorted([int(v) for v in graph.nodes])}")
+    # print(f"Graph nodes cost: {graph_cost}")
 
     return graph
 
 
-def extract_solution(prob) -> tuple[dict, dict, dict]:
+def extract_solution(model: Highs) -> tuple[dict, dict, dict]:
     lodging_vars = {}
     origin_vars = {}
     waypoint_vars = {}
-    for k, v in prob.variablesDict().items():
-        if not round(v.varValue) >= 1:
+    for var_obj in model.getVariables():
+        var_value = model.variableValue(var_obj)
+        if not round(var_value) >= 1: # type: ignore
             continue
-        # print(f"{k=} => {v.varValue=}")
 
-        if k.startswith("flow_lodging_") and "_to_" not in k:
-            lodging_vars[k.replace("flow_", "")] = v
-        elif "_on_plant_" in k:
-            root, plant = [e for e in k.split("_") if e.isdigit()][:2]
-            if int(root) != SUPERROOT:
-                origin_vars[plant] = root
-        elif k.startswith(("x_waypoint", "x_town")):
-            waypoint_vars[k.replace("x_", "")] = v
+        var_key = var_obj.name
+        if var_key.startswith("flow_lodging_") and "_to_" not in var_key:
+            lodging_vars[var_key.replace("flow_", "")] = var_value
+        elif "_on_plant_" in var_key:
+            origin_vars[var_key.split("_")[4]] = var_key.split("_")[1]
+        elif var_key.startswith("x_waypoint") or var_key == "x_town_1343":
+            waypoint_vars[var_key.replace("x_", "")] = var_value
     return lodging_vars, origin_vars, waypoint_vars
 
 
@@ -194,13 +192,14 @@ def print_summary(outputs, counts: dict, costs: dict, total_value: float):
 
 
 def generate_workerman_data(
-    prob: LpProblem, lodging: dict, data: dict, graph_data: GraphData
+    prob: Highs, lodging: dict, data: dict, graph_data: GraphData
 ) -> dict:
     print("Creating workerman json...")
     locale.setlocale(locale.LC_ALL, "")
 
     graph = generate_graph(graph_data, prob)
     lodging_vars, origin_vars, waypoint_vars = extract_solution(prob)
+
     # print(f"{lodging_vars=}")
     # print(f"{origin_vars=}")
     # print(f"{waypoint_vars=}")
