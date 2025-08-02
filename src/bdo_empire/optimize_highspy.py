@@ -5,6 +5,7 @@ from highspy import Highs, ObjSense
 from bdo_empire.generate_graph_data import Arc, GraphData, Node, NodeType as NT
 from bdo_empire.solver_highspy import solve, SolverController
 
+SUPERROOT = 99999
 
 def filter_arcs(v: Node, regionflow: str, arcs: list[Arc]) -> list:
     """Simple arc -> var filter"""
@@ -47,7 +48,9 @@ def create_model(config: dict, G: GraphData) -> Highs:
         for region in set(arc.source.regions).intersection(set(arc.destination.regions)):
             key = f"regionflow_{region.id}"
             ub = arc.ub if arc.source.type in [NT.region, NT.𝓢, NT.𝓣, NT.lodging] else region.ub
-            if arc.source.type in [NT.𝓢, NT.plant]:
+            if str(SUPERROOT) in key:
+                ub = len(G["F"])
+            if str(SUPERROOT) not in key and arc.source.type in [NT.𝓢, NT.plant]:
                 arc.vars[key] = model.addBinary(name=f"{key}_on_{arc.name()}")
             else:
                 arc.vars[key] = model.addIntegral(name=f"{key}_on_{arc.name()}", ub=ub)
@@ -58,6 +61,7 @@ def create_model(config: dict, G: GraphData) -> Highs:
         for plant in G["P"].values()
         for region in plant.regions
         for arc in plant.inbound_arcs
+        if region.id != str(SUPERROOT)
     ]
     model.setObjective(model.qsum(prize_values), sense=ObjSense.kMaximize)
 
