@@ -1,11 +1,11 @@
 [project]
 name = "bdo-empire"
-version = "0.4.1"
+version = "0.4.2"
 description = "Worker empire optimizer for BDO using HiGHS mip solver."
 authors = [{ name = "Thell 'Bo' Fowler", email = "thell@tbfowler.net" }]
 
 dependencies = [
-    "certifi>=2025.7.14",
+    "certifi>=2025.8.3",
     "CTkToolTip>=0.8",
     "customtkinter>=5.2.2",
     "highspy>=1.11.0",

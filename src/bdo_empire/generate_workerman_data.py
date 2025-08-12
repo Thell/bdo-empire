@@ -139,6 +139,9 @@ def process_solution(origin_vars: dict, data: dict, graph_data: GraphData, graph
     all_pairs = dict(nx.all_pairs_bellman_ford_path_length(graph, weight="weight"))
     region_to_town = {v["region_key"]: k for k, v in data["exploration"].items() if v["is_base_town"]}
 
+    # Special handling for Ancado Inner Harbor which is not a base town but can have workers when vested.
+    region_to_town[619] = 1343
+
     calculated_value = 0
     distances = []
     origin_cost = 0
