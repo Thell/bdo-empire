@@ -162,7 +162,7 @@ Param0,String
 171,Basement Cellar
 172,Basement Cellar
 173,Soldiers' Tombs (Rugged Southern Mountain Range)
-174,UnKnown
+174,Undiscovered Area
 175,Deep Sea
 176,Bandit's Den Byway
 177,Southern Mountain Range Riverhead
@@ -423,7 +423,7 @@ Param0,String
 432,Kuit Strait
 433,Arena of Arsha
 434,Iliya Island
-435,UnKnown
+435,Undiscovered Area
 436,Battle Arena
 437,Battle Arena
 438,Terrmian Beach
@@ -743,7 +743,7 @@ Param0,String
 869,Ross Sea
 870,Ross Sea
 871,Margoria (Vell's Realm)
-872,UnKnown
+872,Ross Sea
 873,Duvencrune
 874,Duvencrune Farmland
 875,Sherekhan Necropolis
@@ -862,7 +862,7 @@ Param0,String
 988,Serni Sea
 989,Elsana Sea
 990,Oquilla's Eye
-991,UnKnown
+991,Undiscovered Area
 992,Kratuga Ancient Ruins
 993,Sea of Silence
 994,Shipwrecked Haran's Cargo Ship
@@ -900,7 +900,7 @@ Param0,String
 1026,Altar of the Condemned
 1027,Walk of the Banished
 1028,Dead Moon Post
-1029,UnKnown
+1029,Undiscovered Area
 1030,Bahit Sanctum
 1031,Zulatia Sea
 1032,Talibahr's Rope
@@ -937,7 +937,7 @@ Param0,String
 1063,Zulatia Sea
 1064,Shiv Valley Road
 1065,Al Halam Sea
-1066,UnKnown
+1066,Undiscovered Area
 1067,Duvencrune
 1068,Blood Wolf Settlement
 1069,Tuir Valley
@@ -1276,8 +1276,8 @@ Param0,String
 1403,Yzrahid Highlands
 1404,Shakhtar Wilds
 1405,Fris Snowfield
-1406,UnKnown
-1407,UnKnown
+1406,Undiscovered Area
+1407,Undiscovered Area
 1408,Bonghwang's Nest
 1409,Geogugwi Cave
 1410,Dungryong Cave
@@ -1415,12 +1415,122 @@ Param0,String
 1542,Orze's Paradise
 1543,Main Hall
 1544,Snowfall Crasher: Powder Rush
-1545,Yolu's Underground Cave
+1545,Shuilian Cave
 1546,Orze's Petal
 1547,Orze's Root
 1548,Orze's Base
 1549,Orze's Petal
 1550,Orze's Garden
+1551,Demon Realm
+1552,Demon Realm Part 2
+1553,Hakinza Sanctuary
+1554,Harmad Mountains
+1555,Markanta Mountains
+1556,Great Red Spot
+1557,Sanctuary Coastal Outpost
+1558,Ashen Eagle Outpost
+1559,Neftak Outpost
+1560,Shore of Ruins
+1561,Stillmouth Lake
+1562,Litovan Mountains
+1563,Escar Mountains
+1564,Demon Realm Isles
+1565,Demon Realm Road
+1566,Chisti Sea
+1571,Orbita Castle
+1572,Martyr's Ring
+1573,Faith's Resting Place
+1574,Great White Spot
+1575,Frozen Halo
+1576,Sanctified Mercy
+1577,The Penitent Drop
+1578,Library of Slumbering Hope
+1579,Last Confessional
+1581,Aetherion Castle
+1582,Meditating Plains
+1583,The Canted Ring
+1584,Azure Battlefield
+1585,Netherfrost Plains
+1586,Cliff of Despair
+1587,Aal's Revelation
+1588,Urnas Mountains
+1589,Soul's Meridian
+1590,Soul's Meridian
+1591,Euphetar Mountains
+1592,Saterna Mountains
+1593,Lake Neftak
+1596,Zephyros Castle
+1597,Garden of Immortality
+1598,Impending Ruin
+1599,Crossroads of Defiance
+1600,Ancient Ruins
+1601,The Burning Hollow
+1602,Furnace of Life
+1603,Scorched Land of Prophecy
+1604,Doomstill Pond
+1605,Longing Lake
+1606,Furnace of Life
+1607,Caphras Cave Ruins
+1611,Tenebraum Castle
+1612,Ebony Opening
+1613,Veiled Archives
+1614,Forgotten Refuge
+1615,Wailing Altar
+1616,Forsaken Ashes
+1617,Platerra Mountains
+1618,Smike Mountains
+1619,Martyr's Ring
+1621,Nymphamaré Castle
+1622,Tideworn Gorge
+1623,Silverwater Basin
+1624,Singing Spring
+1625,Whispering Hills
+1626,Stillcoral Grove
+1627,Great Dark Spot
+1628,Slumbering Siren's Sanctum
+1629,Emerald Refuge
+1630,Mount Rumanaré
+1631,Ureta Mountains
+1632,(Not in Use)
+1633,Nephia Valley
+1634,Demon Realm
+1635,(Not in Use)
+1641,Hakinza Sanctuary
+1642,Great White Spot
+1643,Escar Mountains
+1644,Neftak Outpost
+1645,Harmad Mountains
+1646,Frozen Halo
+1647,Litovan Mountains
+1648,Martyr's Ring
+1649,Sanctified Mercy
+1650,The Penitent Drop
+1651,Faith's Resting Place
+1652,Meditating Plains
+1653,Saterna Mountains
+1654,Urnas Mountains
+1655,Netherfrost Plains
+1656,Cliff of Despair
+1657,The Canted Ring
+1658,Azure Battlefield
+1659,Euphetar Mountains
+1660,Scorched Land of Prophecy
+1661,Crossroads of Defiance
+1662,Impending Ruin
+1663,Ancient Ruins
+1664,Doomstill Pond
+1665,The Burning Hollow
+1666,Garden of Immortality
+1667,Ebony Opening
+1668,Veiled Archives
+1669,Tenebraum Castle
+1670,Wailing Altar
+1671,Platerra Mountains
+1672,Nephia Valley
+1673,Stillcoral Grove
+1674,Whispering Hills
+1675,Mount Rumanaré
+1676,Ross Sea
 5000,UnKnown
 5001,UnKnown
 5002,UnKnown
