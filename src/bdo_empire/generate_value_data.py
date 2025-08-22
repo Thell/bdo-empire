@@ -1,6 +1,9 @@
 # generate_value_data.py
 
 from math import ceil
+from typing import Any
+from collections.abc import Mapping
+
 import bdo_empire.data_store as ds
 
 
@@ -50,9 +53,7 @@ def worker_stats(worker: dict, skill_set, data: dict) -> dict:
     return {"wspd": wspd, "mspd": mspd, "luck": luck}
 
 
-def calcCyclesDaily(
-    baseWorkload: float, wspd: float, dist: float, mspd: float, modifier: float
-) -> float:
+def calcCyclesDaily(baseWorkload: float, wspd: float, dist: float, mspd: float, modifier: float) -> float:
     moveMinutes = 2 * dist / mspd / 60
     activeWorkload = baseWorkload * (2 - modifier / 100)
     workMinutes = ceil(activeWorkload / wspd)
@@ -101,9 +102,7 @@ def profitPzTownStats(
     return priceDaily
 
 
-def profit(
-    region: int, plantzone: int, dist: float, worker: dict, skill_set: list, data: dict
-) -> float:
+def profit(region: int, plantzone: int, dist: float, worker: dict, skill_set: list, data: dict) -> float:
     stats = worker_stats(worker, skill_set, data)
     priceDaily = profitPzTownStats(
         plantzone,
@@ -120,20 +119,18 @@ def profit(
 
 def optimize_skills(region: int, plantzone: int, dist: float, worker: dict, data: dict):
     max_skills = 9
-    w_bonuses = {0: {"skills": [], "profit": 0}}
+    w_bonuses: Mapping[int, Mapping[str, Any]] = {0: {"skills": [], "profit": 0}}
     w_actions = ["wspd"]
     w_actions.append("wspd_farm")
 
     w_skills = []
     for key, skill in data["worker_skills"].items():
         if any(act in skill for act in w_actions):
-            w_skills.append(
-                {
-                    "key": key,
-                    "amount": skill.get("wspd", 0) + skill.get("wspd_farm", 0),
-                    "mspd": skill.get("mspd", 0),
-                }
-            )
+            w_skills.append({
+                "key": key,
+                "amount": skill.get("wspd", 0) + skill.get("wspd_farm", 0),
+                "mspd": skill.get("mspd", 0),
+            })
 
     w_skills.sort(key=lambda x: (x["amount"], x["mspd"]), reverse=True)
 
@@ -153,9 +150,7 @@ def optimize_skills(region: int, plantzone: int, dist: float, worker: dict, data
 
     ml_actions = ["mspd", "luck"]
     ml_skills = {
-        key
-        for key, skill in data["worker_skills"].items()
-        if any(act in skill for act in ml_actions)
+        key for key, skill in data["worker_skills"].items() if any(act in skill for act in ml_actions)
     }
 
     step_results = [w_bonuses[max_skills]]
@@ -249,9 +244,7 @@ def generate_value_data(prices: dict, modifiers: dict, ref_data: dict) -> None:
         output[plantzone][region] = result_data
 
     for plantzone, region_data in output.copy().items():
-        output[plantzone] = dict(
-            sorted(region_data.items(), key=lambda x: x[1]["value"], reverse=True)
-        )
+        output[plantzone] = dict(sorted(region_data.items(), key=lambda x: x[1]["value"], reverse=True))
 
     ds.write_json("node_values_per_town.json", output)
 
@@ -268,6 +261,6 @@ def optimize_worker(region, plantzone, dist, median_workers, data):
         "value": optimized_worker[1]["profit"],
         "worker_data": median_workers[optimized_worker[0]].copy(),
     }
-    result_data["worker_data"]["skills"] = [int(s) for s in optimized_worker[1]["skills"].copy()]
+    result_data["worker_data"]["skills"] = [int(s) for s in optimized_worker[1]["skills"].copy()]  # type: ignore
 
     return (plantzone, region, result_data)

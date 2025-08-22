@@ -21,25 +21,24 @@ from bdo_empire.optimize_highspy import optimize as optimize_highspy
 from bdo_empire.solver_highspy import SolverController
 
 
-
 optimize_config = {
     "name": "Empire",
     "budget": 0,
     "top_n": 6,
     "nearest_n": 7,
     "max_waypoint_ub": 17,
-    "solver_config": {}
+    "solver_config": {},
 }
 
 
 solver_config = {
-    "num_threads": max(1, cpu_count(logical=False) - 1), # type: ignore
+    "num_threads": max(1, cpu_count(logical=False) - 1),  # type: ignore
     "mip_rel_gap": 1e-4,
     "mip_feasibility_tolerance": 1e-4,
     "primal_feasibility_tolerance": 1e-4,
     "random_seed": randint(0, 2147483647),
     "time_limit": inf,
-    "mip_improvement_timeout": inf
+    "mip_improvement_timeout": inf,
 }
 
 
@@ -101,6 +100,7 @@ def try_parse_int(val, default=0):
     except (ValueError, AttributeError):
         return default
 
+
 class WidgetState(Enum):
     Ready = 0
     Required = 1
@@ -112,6 +112,7 @@ class WidgetState(Enum):
 
 def get_version():
     from importlib.metadata import version, PackageNotFoundError
+
     try:
         return version("bdo-empire")
     except PackageNotFoundError:
@@ -207,7 +208,9 @@ class EmpireOptimizerApp(ctk.CTk):
         self.outpath_status.grid(row=row, column=3, padx=10, pady=10)
 
         row += 1
-        self.optimize_stop_button = ctk.CTkButton(self, text="Stop", command=self.stop_optimization, state=DISABLED)
+        self.optimize_stop_button = ctk.CTkButton(
+            self, text="Stop", command=self.stop_optimization, state=DISABLED
+        )
         self.optimize_stop_button.grid(row=row, column=0, padx=10, pady=10)
         self.optimize_button = ctk.CTkButton(self, text="Optimize", command=self.optimize, state=DISABLED)
         self.optimize_button.grid(row=row, column=1, padx=10, pady=10)
@@ -239,7 +242,7 @@ class EmpireOptimizerApp(ctk.CTk):
             selectbackground=select_bg,
             selectforeground=select_fg,
             highlightthickness=0,
-            borderwidth=0
+            borderwidth=0,
         )
         return lb
 
@@ -262,7 +265,9 @@ class EmpireOptimizerApp(ctk.CTk):
             explore_name_map = ds.read_strings_csv("explore.csv")
             exploration_data = ds.read_json("exploration.json")
             return {
-                int(node_data["waypoint_key"]): explore_name_map.get(node_data["waypoint_key"], f"Unknown {node_data['waypoint_key']}")
+                int(node_data["waypoint_key"]): explore_name_map.get(
+                    node_data["waypoint_key"], f"Unknown {node_data['waypoint_key']}"
+                )
                 for node_data in exploration_data.values()
             }
         except Exception as e:
@@ -424,10 +429,12 @@ class EmpireOptimizerApp(ctk.CTk):
 
         # Bind mouse wheel scrolling for linux (WSL)
         scrollable_frame.bind_all(
-            "<Button-4>", lambda e: scrollable_frame._parent_canvas.yview("scroll", -1, "units")  # pylint: disable=protected-access
+            "<Button-4>",
+            lambda e: scrollable_frame._parent_canvas.yview("scroll", -1, "units"),  # pylint: disable=protected-access
         )
         scrollable_frame.bind_all(
-            "<Button-5>", lambda e: scrollable_frame._parent_canvas.yview("scroll", 1, "units")   # pylint: disable=protected-access
+            "<Button-5>",
+            lambda e: scrollable_frame._parent_canvas.yview("scroll", 1, "units"),  # pylint: disable=protected-access
         )
 
         # Header labels
@@ -458,11 +465,13 @@ class EmpireOptimizerApp(ctk.CTk):
         def make_scroll_binder(entry):
             def handler(_e):
                 self.check_scroll(entry, scrollable_frame)
+
             return handler
 
         def make_validate_handler(var, status_label, prepaid_var, town):
             def handler(_e):
                 self.validate_and_refresh_lodging(var, status_label, prepaid_var, town)
+
             return handler
 
         self.lodging_entries = {}
@@ -497,7 +506,9 @@ class EmpireOptimizerApp(ctk.CTk):
                 reserved_entry.bind(ev, make_scroll_binder(reserved_entry))
 
             bonus_entry.bind("<FocusOut>", make_validate_handler(bonus_var, status_label, prepaid_var, town))
-            reserved_entry.bind("<FocusOut>", make_validate_handler(reserved_var, status_label, prepaid_var, town))
+            reserved_entry.bind(
+                "<FocusOut>", make_validate_handler(reserved_var, status_label, prepaid_var, town)
+            )
 
             self.lodging_entries[town] = {
                 "bonus": bonus_var,
@@ -524,7 +535,7 @@ class EmpireOptimizerApp(ctk.CTk):
         entry_row = entry.grid_info()["row"]
         entry_widget = scrollable_frame.grid_slaves(row=entry_row, column=1)[0]
 
-        canvas = scrollable_frame._parent_canvas # pylint: disable=protected-access
+        canvas = scrollable_frame._parent_canvas  # pylint: disable=protected-access
         canvas.update_idletasks()
         canvas_height = canvas.winfo_height()
         scroll_top = canvas.canvasy(0)
@@ -548,15 +559,15 @@ class EmpireOptimizerApp(ctk.CTk):
 
     def recompute_total_prepaid_cp(self):
         prepaid_total = sum(
-            spec.get("prepaid", 0) for spec in lodging_specifications.values()
+            spec.get("prepaid", 0)
+            for spec in lodging_specifications.values()
             if isinstance(spec.get("prepaid", 0), int)
         )
         if prepaid_total:
             budget_val = try_parse_int(self.cp_entry.get(), default=0)
             total_cp = budget_val + prepaid_total
             self.cp_prepaid_label.configure(
-                text=f"+ Prepaid: {prepaid_total} = {total_cp}",
-                text_color="white"
+                text=f"+ Prepaid: {prepaid_total} = {total_cp}", text_color="white"
             )
         else:
             self.cp_prepaid_label.configure(text="")
@@ -586,7 +597,7 @@ class EmpireOptimizerApp(ctk.CTk):
         has_warning = False
         warning_msg = ""
         if bonus > bonus_ub:
-            warning_msg=f"Max bonus should be {bonus_ub}"
+            warning_msg = f"Max bonus should be {bonus_ub}"
             has_warning = True
 
         try:
@@ -637,7 +648,7 @@ class EmpireOptimizerApp(ctk.CTk):
                 lodging_specifications[town].update({
                     "bonus": bonus_value,
                     "reserved": reserved_value,
-                    "prepaid": prepaid_value
+                    "prepaid": prepaid_value,
                 })
             except ValueError as e:
                 print(f"Warning: Could not parse lodging values for {town}: {e}")
@@ -670,7 +681,7 @@ class EmpireOptimizerApp(ctk.CTk):
                             self.lodging_entries[town]["bonus"],
                             self.lodging_entries[town]["status"],
                             self.lodging_entries[town]["prepaid"],
-                            town
+                            town,
                         )
                 self.recompute_total_prepaid_cp()
                 self.update_optimize_button_state()
@@ -691,7 +702,7 @@ class EmpireOptimizerApp(ctk.CTk):
                         "bonus": bonus,
                         "reserved": reserved,
                         "prepaid": prepaid,
-                        "bonus_ub": bonus_ub
+                        "bonus_ub": bonus_ub,
                     }
                 except ValueError as e:
                     print(f"Skipping {town} due to invalid data: {e}")
@@ -825,7 +836,7 @@ class EmpireOptimizerApp(ctk.CTk):
         data = generate_reference_data(config, prices, modifiers, lodging_specifications, grindTakenList)
         graph_data = generate_graph_data(data)
 
-        prob = optimize_highspy(data, graph_data, controller=self.solver_controller)  # <-- pass controller
+        prob = optimize_highspy(data, graph_data, controller=self.solver_controller)
 
         workerman_json = generate_workerman_data(prob, lodging_specifications, data, graph_data)
 

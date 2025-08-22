@@ -6,10 +6,12 @@ from typing import Any, TypedDict
 
 import networkx as nx
 
-SUPERROOT = 99999 # A special region node for force activated nodes
+SUPERROOT = 99999  # A special region node for force activated nodes
+
 
 class GraphData(TypedDict):
     """GraphData class is passed to the model creator for the solver."""
+
     V: dict[str, Node]  # All Nodes
     E: dict[tuple[str, str], Arc]  # All Arcs
     F: dict[str, Node]  # Force Active Nodes
@@ -20,6 +22,7 @@ class GraphData(TypedDict):
 
 class NodeType(IntEnum):
     """Enum identifying node types for the model creator for the solver."""
+
     𝓢 = auto()
     plant = auto()
     waypoint = auto()
@@ -36,6 +39,7 @@ class NodeType(IntEnum):
 
 class Node:
     """Node class is passed to the model creator for the solver."""
+
     def __init__(  # pylint: disable=dangerous-default-value
         self,
         id: str,  # pylint: disable=redefined-builtin
@@ -92,11 +96,11 @@ class Node:
         }
         for node in self.regions:
             if node is self:
-                obj_dict["regions"].append("self") # type: ignore
+                obj_dict["regions"].append("self")  # type: ignore
             else:
-                obj_dict["regions"].append(node.name()) # type: ignore
+                obj_dict["regions"].append(node.name())  # type: ignore
         for k, v in self.vars.items():
-            obj_dict["vars"][k] = v.to_dict() # type: ignore
+            obj_dict["vars"][k] = v.to_dict()  # type: ignore
         return obj_dict
 
     def __repr__(self) -> str:
@@ -291,7 +295,7 @@ def get_node(nodes, node_id: str, node_type: NodeType, data: dict[str, Any], **k
 
 
 def process_force_activations(nodes: dict[str, Node], arcs: dict[tuple, Arc], data: dict[str, Any]):
-    """ Process forced activation setup.
+    """Process forced activation setup.
 
     - Introduce fixed_${waypoint} for each waypoint in force_active_node_ids between source and the waypoint
     - Introduce region_${SUPERROOT} with links from all basetown nodes and to the sink.
@@ -307,13 +311,13 @@ def process_force_activations(nodes: dict[str, Node], arcs: dict[tuple, Arc], da
     # It will need a single lodging entry with ub == len(G["F"]) and cost 0.
     data["lodging_data"][SUPERROOT] = {
         "max_ub": num_force_active_nodes,
-        "bounds_costs": [(num_force_active_nodes, 0)]
+        "bounds_costs": [(num_force_active_nodes, 0)],
     }
     superroot_node = get_node(nodes, str(SUPERROOT), NodeType.region, data, ub=num_force_active_nodes)
 
     # provide links from _all_ base town nodes to the super root regardlesss if they have lodging.
     for node_key, node in nodes.items():
-        if not node.type in [NodeType.waypoint, NodeType.town]:
+        if node.type not in [NodeType.waypoint, NodeType.town]:
             continue
         if not exploration[int(node.id)]["is_base_town"]:
             continue
@@ -468,6 +472,7 @@ def finalize_regions(data: dict[str, Any], G: GraphData, nearest_n: int):
                 plant_for_force_active.regions += [super_root_node]
 
     return
+
 
 def generate_graph_data(data):
     """Generate and return a GraphData dict composing the LP empire data."""

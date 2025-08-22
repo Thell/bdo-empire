@@ -7,6 +7,7 @@ from bdo_empire.solver_highspy import solve, SolverController
 
 SUPERROOT = 99999
 
+
 def filter_arcs(v: Node, regionflow: str, arcs: list[Arc]) -> list:
     """Simple arc -> var filter"""
     return [

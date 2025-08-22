@@ -87,7 +87,7 @@ def generate_graph(graph_data: GraphData, model: Highs):
     graph = nx.DiGraph()
     exclude_keywords = ["lodging", "𝓢", "𝓣"]
     graph_cost = 0
-    for var_key in [v.name for v in model.getVariables() if int(round(model.variableValue(v))) >= 1]: # type: ignore
+    for var_key in [v.name for v in model.getVariables() if int(round(model.variableValue(v))) >= 1]:  # type: ignore
         exclude = any(keyword in var_key for keyword in exclude_keywords)
         if exclude:
             continue
@@ -108,8 +108,8 @@ def generate_graph(graph_data: GraphData, model: Highs):
 
     isolated = nx.isolates(graph)
     graph.remove_nodes_from(isolated)
-    if '99999' in graph.nodes:
-        graph.remove_node('99999')
+    if "99999" in graph.nodes:
+        graph.remove_node("99999")
     # print(f"All nodes: {sorted([int(v) for v in graph.nodes])}")
     # print(f"Graph nodes cost: {graph_cost}")
 
@@ -122,7 +122,7 @@ def extract_solution(model: Highs) -> tuple[dict, dict, dict]:
     waypoint_vars = {}
     for var_obj in model.getVariables():
         var_value = model.variableValue(var_obj)
-        if not round(var_value) >= 1: # type: ignore
+        if not round(var_value) >= 1:  # type: ignore
             continue
 
         var_key = var_obj.name
@@ -194,9 +194,7 @@ def print_summary(outputs, counts: dict, costs: dict, total_value: float):
     print("         Value:", locale.currency(round(total_value), grouping=True, symbol=True)[:-3])
 
 
-def generate_workerman_data(
-    prob: Highs, lodging: dict, data: dict, graph_data: GraphData
-) -> dict:
+def generate_workerman_data(prob: Highs, lodging: dict, data: dict, graph_data: GraphData) -> dict:
     print("Creating workerman json...")
     locale.setlocale(locale.LC_ALL, "")
 
@@ -232,8 +230,10 @@ def generate_workerman_data(
 
     print_summary(outputs, counts, costs, calculated_value)
     if data["force_active_node_ids"]:
-        print(f"There are {len(data['force_active_node_ids'])}",
-              "force activated node connections included in waypoints.\n")
+        print(
+            f"There are {len(data['force_active_node_ids'])}",
+            "force activated node connections included in waypoints.\n",
+        )
     if "town_1343" in waypoint_vars.keys():
         print("Ancado Inner Harbor active (cost 1) and included with waypoints.")
 

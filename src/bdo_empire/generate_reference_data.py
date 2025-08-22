@@ -108,9 +108,8 @@ def compute_lodging_bounds_costs(
     return bounds_costs, prepaid
 
 
-def get_affiliated_town_regions(data: dict|None = None) -> dict:
-    """
-    """
+def get_affiliated_town_regions(data: dict | None = None) -> dict:
+    """ """
     if data is None:
         data = {}
         data["exploration"] = ds.read_json("exploration.json")
@@ -119,6 +118,7 @@ def get_affiliated_town_regions(data: dict|None = None) -> dict:
         for k, v in data["exploration"].items()
         if v["is_worker_npc_town"] or v["is_warehouse_town"]
     }
+
 
 def region_key_from_townname(townname: str, data: dict[str, Any] | None = None) -> int:
     """Translates a town name into its corresponding region key using Regioninfo strings.
@@ -131,7 +131,10 @@ def region_key_from_townname(townname: str, data: dict[str, Any] | None = None) 
     """
     region_strings = ds.read_strings_csv("Regioninfo.csv") if data is None else data["region_strings"]
     affiliated_town_regions = get_affiliated_town_regions(data)
-    region_key = next((rk for rk, name in region_strings.items() if name == townname and rk in affiliated_town_regions), None)
+    region_key = next(
+        (rk for rk, name in region_strings.items() if name == townname and rk in affiliated_town_regions),
+        None,
+    )
     if not region_key:
         raise ValueError(f"Town name {townname} not found in Regioninfo.csv")
     return region_key
@@ -173,17 +176,17 @@ def set_lodging_bounds_costs(lodging_specifications: dict, data: dict) -> None:
         effective_lodging_ub = 1 + lodging_ub + bonus_ub - reserved
         solver_lodging_ub = min(max_waypoint_ub, effective_lodging_ub)
 
-        bounds_costs, prepaid = compute_lodging_bounds_costs(lodging_chains, reserved, bonus, solver_lodging_ub)
-
-        lodging_chains.update(
-            {
-                "bonus": bonus,
-                "bounds_costs": bounds_costs,
-                "max_ub": bounds_costs[-1][0],
-                "prepaid": prepaid,
-                "reserved": reserved,
-            }
+        bounds_costs, prepaid = compute_lodging_bounds_costs(
+            lodging_chains, reserved, bonus, solver_lodging_ub
         )
+
+        lodging_chains.update({
+            "bonus": bonus,
+            "bounds_costs": bounds_costs,
+            "max_ub": bounds_costs[-1][0],
+            "prepaid": prepaid,
+            "reserved": reserved,
+        })
 
 
 def get_region_lodging_bounds_costs(town: str, lodging_specification: dict) -> dict:
@@ -205,7 +208,9 @@ def get_region_lodging_bounds_costs(town: str, lodging_specification: dict) -> d
 
     effective_lodging_ub = 1 + lodging_ub + bonus_ub - reserved
 
-    bounds_costs, prepaid = compute_lodging_bounds_costs(lodging_chains, reserved, bonus, effective_lodging_ub)
+    bounds_costs, prepaid = compute_lodging_bounds_costs(
+        lodging_chains, reserved, bonus, effective_lodging_ub
+    )
 
     max_ub = bounds_costs[-1][0]
 

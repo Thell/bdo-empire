@@ -9,6 +9,7 @@ import time
 from highspy import Highs, kHighsInf, ObjSense
 import numpy as np
 
+
 class SolverController:
     def __init__(self):
         self._interrupt_event = Event()
@@ -18,6 +19,7 @@ class SolverController:
 
     def is_interrupted(self) -> bool:
         return self._interrupt_event.is_set()
+
 
 @dataclass
 class Incumbent:
