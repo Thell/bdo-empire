@@ -18,7 +18,7 @@ def filter_arcs(v: Node, regionflow: str, arcs: list[Arc]) -> list:
     ]
 
 
-def link_in_out_by_region_highs(model: Highs, v: Node, in_arcs: list[Arc], out_arcs: list[Arc]) -> None:
+def link_in_out_by_region(model: Highs, v: Node, in_arcs: list[Arc], out_arcs: list[Arc]) -> None:
     """Associate nodes based on the region loads allowed."""
     all_inflows = []
     f = v.vars["f"]
@@ -40,10 +40,11 @@ def create_model(config: dict, G: GraphData) -> Highs:
     model = Highs()
 
     # Variables
+    # NOTE: Plant inbound arc regionflow variables are defined as binary to act as the selection variable.
 
     for v in G["V"].values():
         v.vars["x"] = model.addBinary(name=f"x_{v.name()}")
-        v.vars["f"] = model.addIntegral(name=f"flow_{v.name()}", ub=v.ub)
+        v.vars["f"] = model.addVariable(name=f"flow_{v.name()}", ub=v.ub)
 
     for arc in G["E"].values():
         for region in set(arc.source.regions).intersection(set(arc.destination.regions)):
@@ -51,10 +52,11 @@ def create_model(config: dict, G: GraphData) -> Highs:
             ub = arc.ub if arc.source.type in [NT.region, NT.𝓢, NT.𝓣, NT.lodging] else region.ub
             if str(SUPERROOT) in key:
                 ub = len(G["F"])
-            if str(SUPERROOT) not in key and arc.source.type in [NT.𝓢, NT.plant]:
+
+            if str(SUPERROOT) not in key and arc.source.type == NT.𝓢:
                 arc.vars[key] = model.addBinary(name=f"{key}_on_{arc.name()}")
             else:
-                arc.vars[key] = model.addIntegral(name=f"{key}_on_{arc.name()}", ub=ub)
+                arc.vars[key] = model.addVariable(name=f"{key}_on_{arc.name()}", ub=ub)
 
     # Objective
     prize_values = [
@@ -76,9 +78,9 @@ def create_model(config: dict, G: GraphData) -> Highs:
 
     for v in G["V"].values():
         if v.type not in [NT.𝓢, NT.𝓣]:
-            link_in_out_by_region_highs(model, v, v.inbound_arcs, v.outbound_arcs)
+            link_in_out_by_region(model, v, v.inbound_arcs, v.outbound_arcs)
 
-    link_in_out_by_region_highs(model, G["V"]["𝓣"], G["V"]["𝓣"].inbound_arcs, G["V"]["𝓢"].outbound_arcs)
+    link_in_out_by_region(model, G["V"]["𝓣"], G["V"]["𝓣"].inbound_arcs, G["V"]["𝓢"].outbound_arcs)
     model.addConstr(G["V"]["𝓢"].vars["x"] == 1, name="x_source")
 
     for node in G["V"].values():
