@@ -1,5 +1,6 @@
 # main.py
 
+import ast
 from enum import Enum
 import json
 from math import inf
@@ -39,6 +40,7 @@ solver_config = {
     "random_seed": randint(0, 2147483647),
     "time_limit": inf,
     "mip_improvement_timeout": inf,
+    "mip_heuristic_run_root_reduced_cost": False,
 }
 
 
@@ -790,7 +792,7 @@ class EmpireOptimizerApp(ctk.CTk):
     def config_solver(self):
         config_window = ctk.CTkToplevel(self)
         config_window.title("Solver Configuration")
-        config_window.geometry("400x270")
+        config_window.geometry("400x320")
         config_window.update()
         config_window.grab_set()
 
@@ -812,7 +814,13 @@ class EmpireOptimizerApp(ctk.CTk):
         int_fields = ["num_threads", "random_seed"]
         for setting, var in self.config_entries.items():
             value = var.get()
-            solver_config[setting] = int(value) if setting in int_fields else float(value)
+            solver_config[setting] = (
+                int(value)
+                if setting in int_fields
+                else ast.literal_eval(value)
+                if value in ["True", "False"]
+                else float(value)
+            )
         config_window.destroy()
 
     def _optimize_worker(self):
