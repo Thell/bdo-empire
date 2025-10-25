@@ -12,7 +12,7 @@ import customtkinter as ctk
 from CTkToolTip import CTkToolTip as ctktt
 from psutil import cpu_count
 
-from api_common import set_logger
+from bdo_empire.api_common import set_logger
 import bdo_empire.data_store as ds
 from bdo_empire.generate_graph_data import generate_graph_data
 from bdo_empire.generate_reference_data import generate_reference_data

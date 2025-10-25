@@ -3,7 +3,7 @@
 import rustworkx as rx
 from bidict import bidict
 
-from api_common import get_clean_exploration_data
+from bdo_empire.api_common import get_clean_exploration_data
 
 
 def exploration_graph_nw(data: dict, directed: bool = False) -> rx.PyGraph | rx.PyDiGraph:

@@ -7,7 +7,7 @@ import rustworkx as rx
 from rustworkx import PyDiGraph
 from tabulate import tabulate
 
-from api_common import CALPHEON_KEY, SUPER_ROOT, extract_base_empire
+from bdo_empire.api_common import CALPHEON_KEY, SUPER_ROOT, extract_base_empire
 from bdo_empire.api_rx_pydigraph import subgraph_stable
 import bdo_empire.data_store as ds
 

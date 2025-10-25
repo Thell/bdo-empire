@@ -3,7 +3,7 @@ from typing import Any
 import hashlib
 import json
 
-from api_exploration_graph import get_clean_exploration_data, get_exploration_graph
+from bdo_empire.api_exploration_graph import get_clean_exploration_data, get_exploration_graph
 import bdo_empire.data_store as ds
 from bdo_empire.generate_value_data import generate_value_data
 

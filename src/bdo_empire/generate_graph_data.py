@@ -7,7 +7,7 @@ from loguru import logger
 import rustworkx as rx
 from rustworkx import PyDiGraph
 
-from api_exploration_graph import get_all_pairs_path_lengths
+from bdo_empire.api_exploration_graph import get_all_pairs_path_lengths
 
 
 def prep_graph_nodes(solver_graph: PyDiGraph, data: dict[str, Any]) -> int | None:

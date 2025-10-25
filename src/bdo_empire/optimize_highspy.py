@@ -4,7 +4,7 @@ from highspy import Highs, ObjSense
 from loguru import logger
 from rustworkx import PyDiGraph
 
-from api_common import extract_base_empire
+from bdo_empire.api_common import extract_base_empire
 from bdo_empire.solver_highspy import solve, SolverController
 
 SUPER_ROOT = 99999

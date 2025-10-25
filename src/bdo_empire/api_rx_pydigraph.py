@@ -3,9 +3,9 @@
 from loguru import logger
 import rustworkx as rx
 
-import api_exploration_graph as exploration_api
+import bdo_empire.api_exploration_graph as exploration_api
 
-from api_common import SUPER_ROOT
+from bdo_empire.api_common import SUPER_ROOT
 
 
 def set_graph_terminal_sets_attribute(graph: rx.PyDiGraph, terminals: dict[int, int]):
