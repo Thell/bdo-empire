@@ -7,7 +7,7 @@ from loguru import logger
 import rustworkx as rx
 from rustworkx import PyDiGraph
 
-import data_store as ds
+import bdo_empire.data_store as ds
 
 ANCADO_INNER_HARBOR_KEY = 1343
 CALPHEON_KEY = 601
