@@ -1,10 +1,14 @@
 # generate_value_data.py
 
 from math import ceil
-from typing import Any
-from collections.abc import Mapping
+from typing import TypedDict
 
 import bdo_empire.data_store as ds
+
+
+class SkillsValue(TypedDict):
+    skills: list[int]
+    profit: float
 
 
 def string_keys_to_ints(d):
@@ -119,7 +123,7 @@ def profit(region: int, plantzone: int, dist: float, worker: dict, skill_set: li
 
 def optimize_skills(region: int, plantzone: int, dist: float, worker: dict, data: dict):
     max_skills = 9
-    w_bonuses: Mapping[int, Mapping[str, Any]] = {0: {"skills": [], "profit": 0}}
+    w_bonuses: dict[int, SkillsValue] = {0: {"skills": [], "profit": 0}}
     w_actions = ["wspd"]
     w_actions.append("wspd_farm")
 
@@ -154,13 +158,14 @@ def optimize_skills(region: int, plantzone: int, dist: float, worker: dict, data
     }
 
     step_results = [w_bonuses[max_skills]]
-    ml_best_skills = []
+    ml_best_skills: list[int] = []
     for i in range(1, max_skills + 1):
-        step_base_skills = w_bonuses[max_skills - i]["skills"] + ml_best_skills
+        base_skills: list[int] = w_bonuses[max_skills - i]["skills"]
+        step_base_skills = base_skills + ml_best_skills
         step_candidates = []
 
         for sk in ml_skills:
-            if sk in w_bonuses[max_skills - i]["skills"]:
+            if sk in base_skills:
                 continue
             temp_skills = step_base_skills + [sk]
             new_profit = profit(region, plantzone, dist, worker, temp_skills, data)

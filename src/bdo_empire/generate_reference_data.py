@@ -3,6 +3,7 @@ from typing import Any
 import hashlib
 import json
 
+from api_exploration_graph import get_clean_exploration_data, get_exploration_graph
 import bdo_empire.data_store as ds
 from bdo_empire.generate_value_data import generate_value_data
 
@@ -22,9 +23,14 @@ def set_data_file_values(data: dict) -> None:
     """
     print("Reading data files...")
 
-    data["exploration"] = {int(k): v for k, v in ds.read_json("exploration.json").items()}
+    # data["exploration"] = {int(k): v for k, v in ds.read_json("exploration.json").items()}
+    config = {"exploration_data": {"directed": True, "edge_weighted": False, "omit_great_ocean": True}}
+    data["exploration"] = get_clean_exploration_data(config)
+    data["exploration_graph"] = get_exploration_graph(config)
+
     data["lodging_data"] = {int(k): v for k, v in ds.read_json("all_lodging_storage.json").items()}
     data["region_strings"] = {int(k): v for k, v in ds.read_strings_csv("Regioninfo.csv").items()}
+    data["exploration_strings"] = {int(k): v for k, v in ds.read_strings_csv("explore.csv").items()}
 
 
 def set_data_plant_values(prices: dict, modifiers: dict, data: dict) -> None:
@@ -50,7 +56,11 @@ def set_data_plant_values(prices: dict, modifiers: dict, data: dict) -> None:
         generate_value_data(prices, modifiers, data)
     ds.path().joinpath(sha_filename).write_text(latest_sha, encoding="utf-8")
 
-    data["plant_values"] = ds.read_json("node_values_per_town.json")
+    tmp_plant_values = ds.read_json("node_values_per_town.json")
+    plant_values = {}
+    for k, v in tmp_plant_values.items():
+        plant_values[int(k)] = {int(k2): v2 for k2, v2 in v.items()}
+    data["plant_values"] = plant_values
 
 
 def compute_lodging_bounds_costs(
@@ -114,13 +124,13 @@ def get_affiliated_town_regions(data: dict | None = None) -> dict:
         data = {}
         data["exploration"] = ds.read_json("exploration.json")
     return {
-        v["region_key"]: k
+        int(v["region_key"]): int(k)
         for k, v in data["exploration"].items()
         if v["is_worker_npc_town"] or v["is_warehouse_town"]
     }
 
 
-def region_key_from_townname(townname: str, data: dict[str, Any] | None = None) -> int:
+def region_key_from_townname(townname: int, data: dict[str, Any] | None = None) -> int:
     """Translates a town name into its corresponding region key using Regioninfo strings.
 
     Args:
@@ -189,9 +199,9 @@ def set_lodging_bounds_costs(lodging_specifications: dict, data: dict) -> None:
         })
 
 
-def get_region_lodging_bounds_costs(town: str, lodging_specification: dict) -> dict:
+def get_region_lodging_bounds_costs(town: int, lodging_specification: dict) -> dict:
     """Generate and return the lodging bounds and costs data for a single town (by name)."""
-    region_key = str(region_key_from_townname(town))
+    region_key = region_key_from_townname(town)
     if not region_key:
         raise ValueError(f"Town name, {town}, not found in Regioninfo.csv")
 

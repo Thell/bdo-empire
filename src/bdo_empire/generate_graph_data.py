@@ -1,499 +1,432 @@
 # generate_graph.data.py
 
-from __future__ import annotations
-from enum import IntEnum, auto
-from typing import Any, TypedDict
+from typing import Any
 
-import networkx as nx
+from bidict import bidict
+from loguru import logger
+import rustworkx as rx
+from rustworkx import PyDiGraph
 
-SUPERROOT = 99999  # A special region node for force activated nodes
-
-
-class GraphData(TypedDict):
-    """GraphData class is passed to the model creator for the solver."""
-
-    V: dict[str, Node]  # All Nodes
-    E: dict[tuple[str, str], Arc]  # All Arcs
-    F: dict[str, Node]  # Force Active Nodes
-    R: dict[str, Node]  # Region Nodes
-    L: dict[str, Node]  # Lodging Nodes
-    P: dict[str, Node]  # Plant Nodes
+from api_exploration_graph import get_all_pairs_path_lengths
 
 
-class NodeType(IntEnum):
-    """Enum identifying node types for the model creator for the solver."""
+def prep_graph_nodes(solver_graph: PyDiGraph, data: dict[str, Any]) -> int | None:
+    """Prepare a copy of the exploration graph for the HiGHS model."""
+    logger.info("Preparing graph nodes...")
 
-    𝓢 = auto()
-    plant = auto()
-    waypoint = auto()
-    town = auto()
-    region = auto()
-    lodging = auto()
-    𝓣 = auto()
+    super_root_index = setup_super_terminals(solver_graph, data)
 
-    INVALID = auto()
+    node_key_by_index = bidict({i: solver_graph[i]["waypoint_key"] for i in solver_graph.node_indices()})
+    solver_graph.attrs = {"node_key_by_index": node_key_by_index}
 
-    def __repr__(self):
-        return self.name
+    root_indices = [
+        node_key_by_index.inv[t]
+        for t in data["affiliated_town_region"].values()
+        if data["exploration"][t]["is_worker_npc_town"]
+    ]
+    solver_graph.attrs["root_indices"] = root_indices
+    logger.debug(f"Found {len(root_indices)} root indices:")
+    logger.debug(f"(index, waypoint): {[(i, solver_graph[i]['waypoint_key']) for i in root_indices]}")
 
-
-class Node:
-    """Node class is passed to the model creator for the solver."""
-
-    def __init__(  # pylint: disable=dangerous-default-value
-        self,
-        id: str,  # pylint: disable=redefined-builtin
-        type: NodeType,  # pylint: disable=redefined-builtin
-        ub: int,
-        lb: int = 0,
-        cost: int = 0,
-        regions: list[Node] = [],
-    ):
-        self.id = id
-        self.type = type
-        self.ub = ub
-        self.lb = lb
-        self.cost = cost
-        self.region_prizes: dict[str, dict[str, Any]] = {}
-        self.regions = regions if regions else []
-        self.key = self.name()
-        self.inbound_arcs: list[Arc] = []
-        self.outbound_arcs: list[Arc] = []
-        self.vars = {}
-        self.isPlant = type == NodeType.plant
-        self.isLodging = type == NodeType.lodging
-        self.isTown = type == NodeType.town
-        self.isWaypoint = type == NodeType.waypoint
-        self.isRegion = type == NodeType.region
-        self.isForceActive = False
-
-    def name(self) -> str:
-        if self.type in [NodeType.𝓢, NodeType.𝓣]:
-            return self.id
-        return f"{self.type.name}_{self.id}"
-
-    def inSolution(self):
-        x_var = self.vars.get("x", None)
-        if x_var is not None:
-            return x_var.varValue is not None and round(x_var.varValue) >= 1
-        else:
-            return False
-
-    def as_dict(self) -> dict[str, Any]:
-        obj_dict = {
-            "key": self.name(),
-            "name": self.name(),
-            "id": self.id,
-            "type": self.type.name.lower(),
-            "ub": self.ub,
-            "lb": self.ub,
-            "cost": self.cost,
-            "region_prizes": self.region_prizes,
-            "regions": [],
-            "inbound_arcs": [arc.key for arc in self.inbound_arcs],
-            "outbound_arcs": [arc.key for arc in self.outbound_arcs],
-            "vars": {},
-        }
-        for node in self.regions:
-            if node is self:
-                obj_dict["regions"].append("self")  # type: ignore
-            else:
-                obj_dict["regions"].append(node.name())  # type: ignore
-        for k, v in self.vars.items():
-            obj_dict["vars"][k] = v.to_dict()  # type: ignore
-        return obj_dict
-
-    def __repr__(self) -> str:
-        return f"Node(name: {self.name()}, ub: {self.ub}, lb: {self.lb}, cost: {self.cost}, value: {self.region_prizes})"
-
-    def __eq__(self, other) -> bool:
-        return self.name() == other.name()
-
-    def __hash__(self) -> int:
-        return hash((self.name()))
+    setup_terminals(solver_graph, data)
+    setup_roots(solver_graph, data)
+    setup_node_transit_bounds(solver_graph, data, super_root_index)
+    return super_root_index
 
 
-class Arc:
-    def __init__(self, source: Node, destination: Node, ub: int, cost: int = 0):
-        self.source = source
-        self.destination = destination
-        self.ub = ub
-        self.cost = cost
-        self.key = (source.name(), destination.name())
-        self.type = (source.type, destination.type)
-        self.vars = {}
+def setup_super_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> int | None:
+    """Injects the superroot node into the graph"""
+    # Super terminals require the super root for connection via any basetown.
+    # Flow is _into_ super root with no flow out to prevent worker flow routing shortcuts
+    super_root_index = None
 
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "key": self.key,
-            "name": self.name(),
-            "ub": self.ub,
-            "type": self.type,
-            "source": self.source.name(),
-            "destination": self.destination.name(),
-            "vars": {k: v.to_dict() for k, v in self.vars.items() if round(v.varValue) > 0},
-        }
+    if data["force_active_node_ids"]:
+        logger.info("  setting up super-terminals...")
+        from api_rx_pydigraph import inject_super_root
 
-    def inSolution(self) -> bool:
-        return self.source.inSolution() and self.destination.inSolution()
+        for node in solver_graph.nodes():
+            node["is_super_terminal"] = (
+                True if node["waypoint_key"] in data["force_active_node_ids"] else False
+            )
 
-    def name(self) -> str:
-        return f"{self.source.name()}_to_{self.destination.name()}"
+        node_key_by_index = bidict({i: solver_graph[i]["waypoint_key"] for i in solver_graph.node_indices()})
+        solver_graph.attrs = {"node_key_by_index": node_key_by_index}
+        super_root_index = inject_super_root({}, solver_graph, flow_direction="inbound")
+        solver_graph[super_root_index]["is_super_terminal"] = False
+        solver_graph[super_root_index]["ub"] = len(data["force_active_node_ids"])
 
-    def __repr__(self) -> str:
-        return f"arc({self.source.name()} -> {self.destination.name()}, ub: {self.ub})"
-
-    def __eq__(self, other) -> bool:
-        return (self.source, self.destination) == (other.source, other.destination)
-
-    def __hash__(self) -> int:
-        return hash((self.source.name() + self.destination.name()))
+    return super_root_index
 
 
-def add_arcs(nodes: dict[str, Node], arcs: dict[tuple, Arc], node_a: Node, node_b: Node):
-    """Add arcs between a and b."""
-    # A safety measure to ensure arc direction.
-    if node_a.type > node_b.type:
-        node_a, node_b = node_b, node_a
+def setup_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> list[int]:
+    """Prepares terminals with top_n root values."""
+    # The top_n root values per terminal retain their value and all others are set at zero value.
+    top_n = data["config"]["top_n"]
+    logger.info(f"  setting up plant zones with {top_n} highest valued base towns per plant...")
 
-    arc_configurations = {
-        (NodeType.𝓢, NodeType.plant): (1, 0),
-        (NodeType.𝓢, NodeType.waypoint): (1, 0),
-        (NodeType.plant, NodeType.waypoint): (1, 0),
-        (NodeType.plant, NodeType.town): (1, 0),
-        (NodeType.waypoint, NodeType.waypoint): (node_b.ub, node_a.ub),
-        (NodeType.waypoint, NodeType.town): (node_b.ub, node_a.ub),
-        (NodeType.town, NodeType.town): (node_b.ub, node_a.ub),
-        (NodeType.town, NodeType.region): (node_b.ub, 0),
-        (NodeType.region, NodeType.lodging): (node_b.ub, 0),
-        (NodeType.lodging, NodeType.𝓣): (node_a.ub, 0),
-    }
+    node_key_by_index = solver_graph.attrs["node_key_by_index"]
+    terminal_indices = []
 
-    ub, reverse_ub = arc_configurations.get((node_a.type, node_b.type), (1, 0))
+    for i in solver_graph.node_indices():
+        node = solver_graph[i]
+        if not node["is_workerman_plantzone"]:
+            continue
+        terminal_indices.append(i)
 
-    arc_a = Arc(node_a, node_b, ub=ub)
-    arc_b = Arc(node_b, node_a, ub=reverse_ub)
+        prizes = data["plant_values"][node["waypoint_key"]]
+        prizes = sorted(prizes.items(), key=lambda x: x[1]["value"], reverse=True)
+        prizes = dict(prizes[:top_n])
+        values = {}
+        # NOTE: Prize keys are affiliated town regions not waypoint keys, so translate!
+        for warehouse_key, prize_data in prizes.items():
+            value = int(prize_data["value"])
+            if value == 0:
+                break
+            root_key = data["affiliated_town_region"][warehouse_key]
+            root_index = node_key_by_index.inv[root_key]
+            values[root_index] = value
+        node["prizes"] = values
 
-    for arc in [arc_a, arc_b]:
-        if arc.key not in arcs and arc.ub > 0:
-            arcs[arc.key] = arc
-            nodes[arc.source.key].outbound_arcs.append(arc)
-            nodes[arc.destination.key].inbound_arcs.append(arc)
+    town_to_region_map = {int(town): region for region, town in data["affiliated_town_region"].items()}
+    for terminal_index in sorted(terminal_indices):
+        node = solver_graph[terminal_index]
+        prizes = node["prizes"]
+        for root, prize in prizes.items():
+            town = solver_graph[root]["waypoint_key"]
+            region = town_to_region_map[int(town)]
+            logger.debug(f"{node['waypoint_key']:>5} {region:>5} {town:>5} {prize:>5}")
 
-            if arc.destination.type is NodeType.lodging:
-                arc.destination.regions = [arc.source]
+    solver_graph.attrs["terminals"] = terminal_indices
+    return terminal_indices
 
 
-def get_sparsified_link_graph(data: dict[str, Any]):
-    link_graph = nx.Graph()
-    for origin_key, origin_data in data["exploration"].items():
-        for destination_key in origin_data["link_list"]:
-            if destination_key not in data["exploration"]:
+def setup_roots(solver_graph: PyDiGraph, data: dict[str, Any]):
+    """Prepares step-wise tiered root lodging costs."""
+    # The lodging costs of a worker town is a simple dict keyed by 0..capacity with cost values.
+    # The capacity is the minimum of the waypoint_ub and the towns maximum lodging capacity.
+    logger.info("  setting up root lodging costs...")
+    root_indices = solver_graph.attrs["root_indices"]
+
+    for i in root_indices:
+        node = solver_graph[i]
+        region_key = node["region_key"]
+        lodgings = data["lodging_data"][region_key]
+        # num_free = lodgings["lodging_bonus"] + 1
+        num_free = lodgings["bonus"] + 1
+
+        dominant_lodgings = []
+        for n, lodging_data in lodgings.items():
+            if not isinstance(n, int):
+                break
+            current_lodging_capacity = lodging_data[0]["lodging"]
+            current_lodging_cost = lodging_data[0]["cost"]
+            while len(dominant_lodgings) > 1 and current_lodging_cost < dominant_lodgings[-1]["cost"]:
+                dominant_lodgings.pop()
+            dominant_lodgings.append({"capacity": current_lodging_capacity, "cost": current_lodging_cost})
+
+        # increase the capacity of each dominant lodging by lodging_bonus + 1
+        for lodging in dominant_lodgings:
+            lodging["capacity"] += num_free
+
+        # ub = min(lodgings["max_ub"] + num_free, data["config"]["waypoint_ub"] + 1)
+        ub = min(lodgings["max_ub"] + num_free, data["config"]["max_waypoint_ub"] + 1)
+        capacity_cost = [0] * (ub)
+        current_index = num_free
+
+        while current_index <= ub + 1 and len(dominant_lodgings) > 0:
+            capacity_limit = min(ub + 1, dominant_lodgings[0]["capacity"] + num_free)
+            capacity_cost[current_index:capacity_limit] = [dominant_lodgings[0]["cost"]] * (
+                capacity_limit - current_index
+            )
+            current_index = capacity_limit
+            dominant_lodgings.pop(0)
+
+        node["ub"] = ub - 1
+        node["capacity_cost"] = capacity_cost
+
+    for i in root_indices:
+        logger.debug(
+            f"{solver_graph[i]['waypoint_key']:>5} region_key: {solver_graph[i]['region_key']:>5} ub: {solver_graph[i]['ub']} costs: {solver_graph[i]['capacity_cost']}"
+        )
+
+
+def setup_node_transit_bounds(solver_graph: PyDiGraph, data: dict[str, Any], super_root_index: int | None):
+    # The upper bound on transit for any worker town in the nearest_n towns is the minimum of
+    # the waypoint_ub and the towns maximum lodging capacity and is set during lodging setup.
+    # The upper bound for all other worker towns is zero.
+    # In the end a non-root node has _n entries and a root node has _n+1 entries
+    nearest_n = data["config"]["nearest_n"]
+    logger.info(f"  setting up intermediate nodes for the nearest {nearest_n} towns...")
+
+    all_pairs_path_lengths = get_all_pairs_path_lengths(solver_graph)
+    root_indices = solver_graph.attrs["root_indices"]
+
+    root_transit_ub = {i: solver_graph[i]["ub"] for i in root_indices}
+    if super_root_index is not None:
+        root_transit_ub[super_root_index] = len(data["force_active_node_ids"])
+
+    for i in solver_graph.node_indices():
+        node = solver_graph[i]
+        if i == super_root_index:
+            # Super root does not carry transit for any other root.
+            node["transit_bounds"] = {super_root_index: len(data["force_active_node_ids"])}
+            continue
+
+        nearest_roots = []
+        nearest_n_lim = nearest_n
+        for j in root_indices:
+            if i == j:
+                nearest_roots.append((j, 0))
+                nearest_n_lim += 1
                 continue
-            destination_data = data["exploration"][destination_key]
-            if not destination_data["is_plantzone"]:
-                link_graph.add_edge(origin_key, destination_key)
+            pair = (i, j) if i < j else (j, i)
+            nearest_roots.append((j, all_pairs_path_lengths[pair]))
 
-    for node, node_data in link_graph.nodes(data=True):
-        node_data["type"] = get_link_node_type(node, data)
+        nearest_roots = sorted(nearest_roots, key=lambda x: x[1])
+        nearest_roots = [i for i, _ in nearest_roots][:nearest_n_lim]
 
-    # This removes the non-plant non-forced leaf nodes without repeated pruning.
-    # Testing showed that doing any other reductions reduces performance.
-    removal_nodes = []
-    for node, node_data in link_graph.nodes(data=True):
-        if (
-            nx.degree(link_graph, node) == 1
-            and node_data["type"] is not NodeType.plant
-            and node not in data["force_active_node_ids"]
-        ):
-            removal_nodes.append(node)
-    if removal_nodes:
-        link_graph.remove_nodes_from(removal_nodes)
+        transit_ubs = {r: root_transit_ub[r] for r in nearest_roots}
+        node["transit_bounds"] = transit_ubs
+        logger.debug(
+            f"{solver_graph[i]['waypoint_key']:>5} { {solver_graph[i]['waypoint_key']: ub for i, ub in transit_ubs.items()} }"
+        )
+
+
+def prune_NTD1(G: PyDiGraph, quiet: bool = False) -> int:
+    """In-Place removal of non-terminal non-forced leaf nodes."""
+    if not quiet:
+        logger.info("Pruning NTD1...")
+
+    num_removed = 0
+    while removal_nodes := [
+        v
+        for v in G.node_indices()
+        if G.out_degree(v) == 1
+        and not G[v].get("is_super_terminal", False)
+        and not G[v]["is_workerman_plantzone"]
+    ]:
+        G.remove_nodes_from(removal_nodes)
+        num_removed += len(removal_nodes)
         removal_nodes = []
 
-    return link_graph
+    if not quiet:
+        logger.debug(f"  removed {num_removed} leaf nodes")
+    return num_removed
 
 
-def get_link_node_type(node_id: int, data: dict[str, Any]):
-    """Return the NodeType of the given node_id node."""
-    if data["exploration"][node_id]["is_town"]:
-        return NodeType.town
-    if data["exploration"][node_id]["is_workerman_plantzone"]:
-        return NodeType.plant
-    return NodeType.waypoint
+def reduce_bounds(G: PyDiGraph, super_root_index: int | None):
+    """Limits transit upper bounds via intersection with neighbor bounds."""
+    logger.info("Reducing bounds...")
 
-
-def get_link_nodes(nodes, origin, destination, data):
-    node_a_type = get_link_node_type(origin, data)
-    node_b_type = get_link_node_type(destination, data)
-    node_a_id, node_b_id = str(origin), str(destination)
-
-    # Ensure arc node order.
-    if node_a_type > node_b_type:
-        node_a_id, node_b_id = node_b_id, node_a_id
-        node_a_type, node_b_type = node_b_type, node_a_type
-
-    return (
-        get_node(nodes, node_a_id, node_a_type, data),
-        get_node(nodes, node_b_id, node_b_type, data),
-    )
-
-
-def get_node(nodes, node_id: str, node_type: NodeType, data: dict[str, Any], **kwargs) -> Node:
-    """
-    Generate, add and return node based on NodeType.
-
-    kwargs `plant` and `region` are required for supply nodes.
-    kwargs `ub` is required for region nodes.
-    kwargs `ub`, `cost` and `region` are required for lodging nodes.
-    """
-
-    regions = []
-    lb = 0
-
-    match node_type:
-        case NodeType.𝓢:
-            ub = data["max_ub"]
-            cost = 0
-        case NodeType.plant:
-            ub = 1
-            if "fixed" in node_id:
-                cost = 0
-            else:
-                cost = data["exploration"][int(node_id)]["need_exploration_point"]
-        case NodeType.waypoint | NodeType.town:
-            ub = data["config"]["max_waypoint_ub"]
-            cost = data["exploration"][int(node_id)]["need_exploration_point"]
-        case NodeType.region:
-            lodging_data = data["lodging_data"][int(node_id)]
-            ub = lodging_data["max_ub"]
-            ub = min(ub, data["config"]["max_waypoint_ub"])
-            cost = 0
-        case NodeType.lodging:
-            ub = kwargs.get("ub")
-            lb = kwargs.get("lb")
-            root = kwargs.get("root")
-            cost = kwargs.get("cost")
-            assert (ub is not None) and (lb is not None) and (cost is not None) and root, (
-                "Lodging nodes require 'ub', 'lb' 'cost' and 'root' kwargs."
-            )
-            regions = [root]
-        case NodeType.𝓣:
-            ub = data["max_ub"]
-            cost = 0
-        case NodeType.INVALID:
-            assert node_type is not NodeType.INVALID, "INVALID node type."
-            return  # Unreachable: Stops pyright unbound error reporting.
-
-    node = Node(str(node_id), node_type, ub, lb, cost, regions)
-    if node.key not in nodes:
-        if node.type is NodeType.region:
-            node.regions = [node]
-        nodes[node.key] = node
-
-    return nodes[node.key]
-
-
-def process_force_activations(nodes: dict[str, Node], arcs: dict[tuple, Arc], data: dict[str, Any]):
-    """Process forced activation setup.
-
-    - Introduce fixed_${waypoint} for each waypoint in force_active_node_ids between source and the waypoint
-    - Introduce region_${SUPERROOT} with links from all basetown nodes and to the sink.
-    """
-    exploration = data["exploration"]
-    num_force_active_nodes = len(data["force_active_node_ids"])
-
-    source_node = get_node(nodes, "𝓢", NodeType.𝓢, data)
-    sink_node = get_node(nodes, "𝓣", NodeType.𝓣, data)
-
-    # NOTE: Because super root is a region we must have a lodging specification in data["lodging_data"]
-    #       it might be better to do this in the generate_reference_data (?)
-    # It will need a single lodging entry with ub == len(G["F"]) and cost 0.
-    data["lodging_data"][SUPERROOT] = {
-        "max_ub": num_force_active_nodes,
-        "bounds_costs": [(num_force_active_nodes, 0)],
-    }
-    superroot_node = get_node(nodes, str(SUPERROOT), NodeType.region, data, ub=num_force_active_nodes)
-
-    # provide links from _all_ base town nodes to the super root regardlesss if they have lodging.
-    for node_key, node in nodes.items():
-        if node.type not in [NodeType.waypoint, NodeType.town]:
+    ubs_to_deactivate: list[set[int]] = []
+    for i in G.node_indices():
+        if i == super_root_index:
             continue
-        if not exploration[int(node.id)]["is_base_town"]:
-            continue
-        add_arcs(nodes, arcs, node, superroot_node)
+        node = G[i]
+        successors = G.successor_indices(i)
 
-    add_arcs(nodes, arcs, superroot_node, sink_node)
+        # NOTE: This may be too much and could cut out potential paths because it would
+        # cascade unless we store the changes and then apply them at the end of processing
+        # which short-circuits the cascading... testing on our input graph shows this is OK.
 
-    for node_key, node in nodes.copy().items():
-        if not node.isForceActive:
-            continue
-        print(f"  creating fixed node for {node.name()}.")
-        fixed_node = get_node(nodes, f"fixed_{node_key}", NodeType.plant, data)
-        add_arcs(nodes, arcs, source_node, fixed_node)
-        add_arcs(nodes, arcs, fixed_node, node)
-
-
-def process_links(nodes: dict[str, Node], arcs: dict[tuple, Arc], data: dict[str, Any]):
-    """Process all waypoint links and add the nodes and arcs to the graph.
-
-    Calls handlers for plant and town nodes to add plant value nodes and
-    region/lodging nodes with their respective source and sink arcs.
-    """
-    link_graph = get_sparsified_link_graph(data)
-
-    for origin_key, origin_data in data["exploration"].items():
-        if not link_graph.has_node(origin_key):
-            continue
-
-        for destination_key in origin_data["link_list"]:
-            if not link_graph.has_node(destination_key):
-                continue
-
-            # `get_link_nodes()` orders the nodes by type.
-            start_node, end_node = get_link_nodes(nodes, origin_key, destination_key, data)
-            if int(start_node.id) in data["force_active_node_ids"]:
-                print(f"  processing_links: Setting node {start_node.name()} to force active.")
-                start_node.isForceActive = True
-
-            add_arcs(nodes, arcs, start_node, end_node)
-
-            if start_node.isPlant:
-                process_plant(nodes, arcs, start_node, data)
-            if end_node.isTown:
-                process_town(nodes, arcs, end_node, data)
-
-
-def process_plant(nodes: dict[str, Node], arcs: dict[tuple, Arc], plant: Node, data: dict[str, Any]):
-    """Add plant region value nodes and arcs between the source and plant nodes."""
-    for i, (region_id, value_data) in enumerate(data["plant_values"][plant.id].items(), 1):
-        if i > data["config"]["top_n"]:
-            break
-        plant.region_prizes[region_id] = value_data
-
-    add_arcs(nodes, arcs, nodes["𝓢"], plant)
-
-
-def process_town(nodes: dict[str, Node], arcs: dict[tuple, Arc], town: Node, data: dict[str, Any]):
-    """Add town region and lodging nodes and arcs between the town and sink nodes."""
-    exploration_node = data["exploration"][int(town.id)]
-    if not exploration_node["is_worker_npc_town"]:
-        return
-
-    region_key = exploration_node["region_key"]
-
-    # NOTE: lodging data is pre-processed to account for base 1 bonus per town
-    # and any bonus pearl/loyalty lodging as well as any reserved lodging usage.
-    # See the 'lodging bounds' functions in "generate_reference_data.py".
-    lodging_data = data["lodging_data"].get(region_key)
-    assert lodging_data, f"Error: Lodging data missing for region {region_key}!"
-    bounds_costs = lodging_data["bounds_costs"]
-
-    # max_ub is the limiting constraint for total workers in a region
-    max_ub = lodging_data["max_ub"]
-
-    region_node = get_node(nodes, region_key, NodeType.region, data, ub=max_ub)
-    add_arcs(nodes, arcs, town, region_node)
-
-    # Each bounds_costs pair (lodging, cost) is a unique node in the graph
-    # where lodging the limiting constraint for workers at the given cost
-    # from the all_lodging_storage chains.
-    lb = 0
-    for ub, cost in bounds_costs:
-        lodging_node = get_node(
-            nodes,
-            f"{region_node.id}_for_{ub}",
-            NodeType.lodging,
-            data,
-            ub=ub,
-            lb=lb,
-            cost=cost,
-            root=region_node,
+        # Reduce root ub each (node, successor) pair to the minimum between them
+        # and then the minimum of those results, since each ub is equal to the capacity
+        # of the root this is a simple all or nothing per root...
+        # This essentially cuts out the fringe of the potential transit flow network.
+        active_ubs = set(
+            k
+            for k in node["transit_bounds"].keys()
+            if node["transit_bounds"][k] > 0 and k != super_root_index
         )
-        add_arcs(nodes, arcs, region_node, lodging_node)
-        add_arcs(nodes, arcs, lodging_node, nodes["𝓣"])
-        lb = ub + 1
+        for j in successors:
+            if j == super_root_index:
+                continue
+            neighbor = G[j]
+            neighbor_ubs = set(
+                k for k in neighbor["transit_bounds"].keys() if neighbor["transit_bounds"][k] > 0
+            )
+            active_ubs &= neighbor_ubs
+
+        deactivate_ubs = set(k for k in node["transit_bounds"].keys() if k not in active_ubs)
+        ubs_to_deactivate.append(deactivate_ubs)
+
+    for i, G_i in enumerate(G.node_indices()):
+        if G_i == super_root_index:
+            continue
+        node = G[G_i]
+        for ub in ubs_to_deactivate[i]:
+            node["transit_bounds"].pop(ub, None)
+
+    # Remove root from disconnected transit layer components
+    for r in G.attrs["root_indices"]:
+        if r == super_root_index:
+            continue
+        # node_map maps from subgraph node index to global graph node index
+        subG, node_map = G.subgraph_with_nodemap([i for i in G.node_indices() if r in G[i]["transit_bounds"]])
+        node_map = bidict(node_map)
+        subg_r = node_map.inv[r]
+        cc = rx.weakly_connected_components(subG)
+        for c in cc:
+            if subg_r in c:
+                continue
+            for i in c:
+                G[node_map[i]]["transit_bounds"].pop(r, None)
+
+        subG, node_map = G.subgraph_with_nodemap([i for i in G.node_indices() if r in G[i]["transit_bounds"]])
 
 
-def nearest_n_towns(data: dict[str, Any], G: GraphData, nearest_n: int):
-    """Identify and returns the nearest n towns to any given waypoint node.
-
-    The nearest towns serve as allowable flow constraints for transit routes
-    between production nodes and region nodes. Its purpose is to minimize the
-    solver search space by constraining to 'realistic' node assignments and routes.
+def reduce_bounds_via_root_pruning(G: PyDiGraph) -> None:
     """
-    waypoint_graph = nx.DiGraph()
-    for arc in G["E"].values():
-        waypoint_graph.add_edge(arc.source.id, arc.destination.id, weight=arc.destination.cost)
-    all_pairs = dict(nx.all_pairs_bellman_ford_path_length(waypoint_graph, weight="weight"))
+    Limits transit upper bounds by performing Pruning on the root-specific subgraphs.
+    This effectively eliminates dead-end branches in the potential flow network for each root.
+    """
+    logger.info("Reducing bounds via root-specific pruning (RSP)...")
 
-    nearest_towns_dist = {}
-    nearest_towns = {}
+    from api_common import SUPER_ROOT
 
-    for node_id, node in G["V"].items():
-        if node.isWaypoint or node.isTown:
-            distances = []
-            for region in G["R"].values():
-                if region.id == str(SUPERROOT):
+    super_root_index = None
+    super_terminal_indices = []
+    for i in G.node_indices():
+        if G[i].get("is_super_terminal", False):
+            super_terminal_indices.append(i)
+        if G[i]["waypoint_key"] == SUPER_ROOT:
+            super_root_index = i
+
+    flow_roots = G.attrs["root_indices"].copy()
+    if super_root_index is not None:
+        flow_roots.append(super_root_index)
+
+    for r in flow_roots:
+        transit_nodes = {
+            i
+            for i in G.node_indices()
+            if r in G[i].get("transit_bounds", {}) and G[i]["transit_bounds"][r] > 0
+        }
+        if not transit_nodes:
+            continue
+
+        transit_subgraph, node_map = G.subgraph_with_nodemap(list(transit_nodes))
+        removed_count = prune_NTD1(transit_subgraph, quiet=True)
+        surviving_transit_nodes = {node_map[i] for i in transit_subgraph.node_indices()}
+        removed_transit_nodes = set(transit_nodes) - surviving_transit_nodes
+        if removed_transit_nodes:
+            for i in removed_transit_nodes:
+                G[i]["transit_bounds"].pop(r, None)
+
+        if removed_count:
+            logger.debug(f"  removed {removed_count} leaf nodes from root {r}")
+
+
+def setup_ranked_basin_bottlenecks(G: PyDiGraph, super_root_index: int | None) -> None:
+    """Compute per-root basins via rank-1 core union and connectivity backfill."""
+    basins: dict[int, tuple[list[int], int, list[int]]] = {}
+    roots_indices = G.attrs["root_indices"]
+    terminal_indices = G.attrs["terminals"]
+
+    # Add edge costs to edges based on destination need_exploration_point
+    for u, v in G.edge_list():
+        G.update_edge(u, v, {"weight": G[v]["need_exploration_point"]})
+
+    for r in roots_indices:
+        # Step a: Root transit subgraph (omit super root)
+        if super_root_index is not None and r == super_root_index:
+            continue
+        transit_nodes = {i for i in G.node_indices() if r in G[i].get("transit_bounds", {})}
+        transit_subG, node_map = G.subgraph_with_nodemap(list(transit_nodes))
+        node_map = bidict(node_map)
+
+        # Step b: Remove non-rank1 terminals from transit_subG
+        transit_terminals = [t for t in terminal_indices if t in transit_nodes]
+
+        # NOTE: I'm still not sure which is **best** but rank1 benches better on my test incidents
+        # for rank 1 only
+        rank1_ts = [t for t in transit_terminals if list(G[t]["prizes"].keys())[0] == r]
+
+        # for all [:n] ranks (where n is 1 for 2, 2 for 3, ...)
+        # rank1_ts = [t for t in transit_terminals if r not in list(G[t]["prizes"].keys())[:1]]
+        non_rank1_ts = set(transit_terminals) - set(rank1_ts)
+        transit_subG_prime = transit_subG.copy()
+        transit_subG_prime.remove_nodes_from([node_map.inv[t] for t in non_rank1_ts if t in node_map])
+
+        # Eliminate all non-rank1 terminals and non-cycle, non-rank1 terminal paths
+        prune_NTD1(transit_subG_prime, quiet=True)
+
+        # Step c: All-pairs shortest paths on remaining terminals + root in subG
+        shortest_paths = rx.digraph_all_pairs_dijkstra_shortest_paths(
+            transit_subG_prime, lambda payload: payload["weight"]
+        )
+        used_nodes = set()
+        for source, dest_paths in shortest_paths.items():
+            if node_map[source] != r and node_map[source] not in rank1_ts:
+                continue
+            for dest, path in dest_paths.items():
+                if node_map[dest] not in rank1_ts:
                     continue
-                town_id = data["affiliated_town_region"][int(region.id)]
-                distances.append((region, all_pairs[node.id][str(town_id)]))
-            nearest_towns_dist[node_id] = sorted(distances, key=lambda x: x[1])[:nearest_n]
-            nearest_towns[node_id] = [w for w, _ in nearest_towns_dist[node_id]]
+                used_nodes.update(path)
 
-    return nearest_towns
+        # Step d: Keep only union nodes in transit_subG
+        core_global = {node_map[n] for n in used_nodes}
+        if len(core_global) < 2:
+            logger.debug(f"  Skipping root {r}: insufficient core")
+            continue
 
+        # Step e: New subG with global terminals + core
+        basin_nodes = core_global | set(terminal_indices)
+        basin_subG, basin_map = G.subgraph_with_nodemap(list(basin_nodes))
+        basin_map = bidict(basin_map)
 
-def finalize_regions(data: dict[str, Any], G: GraphData, nearest_n: int):
-    """Finalizes the allowable regional flows for all nodes except region and lodging nodes
-    which are already self-limited to their own region.
-    """
-    # All region nodes have now been generated, finalize regions entries
-    # When forced nodes are present all waypoints must be able to carry the super root flow
-    nearest_towns = nearest_n_towns(data, G, nearest_n)
+        # Step f: Remove isolates
+        isolates_local = rx.isolates(basin_subG)
+        basin_subG.remove_nodes_from(isolates_local)
+        basin_global = {basin_map[ln] for ln in basin_subG.node_indices()}
+        all_enclosed_ts = sorted([t for t in terminal_indices if t in basin_global])
 
-    for v in G["V"].values():
-        if v.type in [NodeType.𝓢, NodeType.𝓣]:
-            v.regions = list(G["R"].values())
-        elif v.isWaypoint or v.isTown:
-            v.regions = list(nearest_towns[v.key])
-        elif v.isPlant:
-            v.regions = [w for w in G["R"].values() if w.id in v.region_prizes.keys()]
+        # Step g: Cut nodes = transit nodes not in basin_global with a neighbor in basin_global
+        cut_nodes = set()
+        for node in sorted(list(transit_nodes - basin_global)):
+            if any([nb in basin_global for nb in G.neighbors(node)]):
+                cut_nodes.add(node)
+        cut_value = len(cut_nodes)
 
-    # ensure super root is a region for all waypoints and for plant nodes of force activated nodes
-    # since it wont be in the nearest_n_towns of any node.
-    if len(G["F"]):
-        super_root_node = G["V"][f"region_{str(SUPERROOT)}"]
-        for v in G["V"].values():
-            if v.type in [NodeType.waypoint, NodeType.town]:
-                v.regions += [super_root_node]
-            if v.isForceActive:
-                plant_for_force_active = G["P"][f"plant_fixed_{v.key}"]
-                plant_for_force_active.regions += [super_root_node]
+        if not all_enclosed_ts or not cut_nodes:
+            logger.debug(f"  Skipping root {r}: empty basin or cuts")
+            continue
 
-    return
+        basins[r] = (all_enclosed_ts, cut_value, list(cut_nodes))
+
+    G.attrs["basins"] = basins
+    logger.info(f"Computed ranked basins for {len(basins)} roots")
 
 
-def generate_graph_data(data):
-    """Generate and return a GraphData dict composing the LP empire data."""
+def generate_graph_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Generate and return a GraphData Dict composing the LP empire data."""
     print("Generating graph data...")
-    nodes: dict[str, Node] = {}
-    arcs: dict[tuple[str, str], Arc] = {}
-    data["force_active_node_keys"] = [str(k) for k in data["force_active_node_ids"]]
 
-    get_node(nodes, "𝓢", NodeType.𝓢, data)
-    get_node(nodes, "𝓣", NodeType.𝓣, data)
-    process_links(nodes, arcs, data)
-    process_force_activations(nodes, arcs, data)
+    G = data["exploration_graph"].copy()
+    super_root_index = prep_graph_nodes(G, data)
 
-    G: GraphData = {
-        "V": dict(sorted(nodes.items(), key=lambda item: item[1].type)),
-        "E": dict(sorted(arcs.items(), key=lambda item: item[1].as_dict()["type"])),
-        "R": {k: v for k, v in nodes.items() if v.isRegion},
-        "P": {k: v for k, v in nodes.items() if v.isPlant},
-        "L": {k: v for k, v in nodes.items() if v.isLodging},
-        "F": {k: v for k, v in nodes.items() if v.isForceActive},
-    }
-    finalize_regions(data, G, data["config"]["nearest_n"])
+    # NOTE: These steps are based on the empirical testing in the milp-flow playground:
+    # overall pruning of non terminal leaf nodes from graph
+    prune_NTD1(G)
+    # per transit layer NTD1 pruning
+    reduce_bounds_via_root_pruning(G)
+    # transit layer region boundary flow reductions
+    reduce_bounds(G, super_root_index)
+    # transit layer region boundary NTD1 pruning
+    reduce_bounds_via_root_pruning(G)
+    # dynamic root basin cuts generation
+    setup_ranked_basin_bottlenecks(G, super_root_index)
 
-    return G
+    if super_root_index is not None:
+        # insert super root transit bounds to all remaining nodes
+        ub = G[super_root_index].get("transit_bounds", {}).get(super_root_index, None)
+        if ub is None:
+            logger.error(f"Super root index {super_root_index} exists but is missing transit bounds!")
+            raise ValueError
+        for i in G.node_indices():
+            if i == super_root_index:
+                continue
+            G[i]["transit_bounds"][super_root_index] = ub
+
+    data["solver_graph"] = G
+    return data

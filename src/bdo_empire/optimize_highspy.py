@@ -1,134 +1,227 @@
 # optimize_highspy.py
 
 from highspy import Highs, ObjSense
+from loguru import logger
+from rustworkx import PyDiGraph
 
-from bdo_empire.generate_graph_data import Arc, GraphData, Node, NodeType as NT
+from api_common import extract_base_empire
 from bdo_empire.solver_highspy import solve, SolverController
 
-SUPERROOT = 99999
+SUPER_ROOT = 99999
 
 
-def filter_arcs(v: Node, regionflow: str, arcs: list[Arc]) -> list:
-    """Simple arc -> var filter"""
-    return [
-        var
-        for arc in arcs
-        for key, var in arc.vars.items()
-        if key.startswith("regionflow_") and (key == regionflow or v.isLodging)
-    ]
-
-
-def link_in_out_by_region(model: Highs, v: Node, in_arcs: list[Arc], out_arcs: list[Arc]) -> None:
-    """Associate nodes based on the region loads allowed."""
-    all_inflows = []
-    f = v.vars["f"]
-    for region in v.regions:
-        regionflow_key = f"regionflow_{region.id}"
-        inflows = filter_arcs(v, regionflow_key, in_arcs)
-        outflows = filter_arcs(v, regionflow_key, out_arcs)
-        model.addConstr(
-            model.qsum(inflows) == model.qsum(outflows), name=f"balance_{regionflow_key}_at_{v.name()}"
-        )
-        all_inflows.extend(inflows)
-    model.addConstr(f == model.qsum(all_inflows), name=f"flow_{v.name()}")
-    model.addConstr(f <= v.ub * v.vars["x"], name=f"x_{v.name()}")
-
-
-def create_model(config: dict, G: GraphData) -> Highs:
-    """Model as reverse flow problem with assignment and dynamic costs."""
+def create_model(
+    G: PyDiGraph,
+    config: dict,
+    prev_terminals_sets: None | dict = None,
+) -> tuple[Highs, dict]:
+    """Model with assignment and dynamic costs with flow from terminals to roots."""
 
     model = Highs()
 
+    roots_indices = G.attrs["root_indices"]
+    terminal_indices = G.attrs["terminals"]
+    super_root_index = None
+    super_terminal_indices = []
+    for i in G.node_indices():
+        if G[i].get("is_super_terminal", False):
+            super_terminal_indices.append(i)
+        if G[i]["waypoint_key"] == SUPER_ROOT:
+            super_root_index = i
+
     # Variables
-    # NOTE: Plant inbound arc regionflow variables are defined as binary to act as the selection variable.
+    # Node selection for each node in graph to determine if node is in forest.
+    x = model.addBinaries(G.node_indices())
 
-    for v in G["V"].values():
-        v.vars["x"] = model.addBinary(name=f"x_{v.name()}")
-        v.vars["f"] = model.addVariable(name=f"flow_{v.name()}", ub=v.ub)
+    # Root assignment selector for each terminal (terminal, root) pair
+    x_t_r = {}
+    for t in terminal_indices:
+        for r in G[t]["prizes"]:
+            x_t_r[(t, r)] = model.addBinary()
+    for t in super_terminal_indices:
+        x_t_r[(t, super_root_index)] = model.addBinary()
 
-    for arc in G["E"].values():
-        for region in set(arc.source.regions).intersection(set(arc.destination.regions)):
-            key = f"regionflow_{region.id}"
-            ub = arc.ub if arc.source.type in [NT.region, NT.𝓢, NT.𝓣, NT.lodging] else region.ub
-            if str(SUPERROOT) in key:
-                ub = len(G["F"])
+    # Previous model: allows for iterative optimization (growth of forest)
+    # from a given set of terminal, root pairs
+    if prev_terminals_sets:
+        logger.info("using prev_model")
+        for t, r in prev_terminals_sets.items():
+            model.addConstr(x_t_r[(t, r)] == 1)
+            model.addConstr(x[t] == 1)
+            model.addConstr(x[r] == 1)
 
-            if str(SUPERROOT) not in key and arc.source.type == NT.𝓢:
-                arc.vars[key] = model.addBinary(name=f"{key}_on_{arc.name()}")
-            else:
-                arc.vars[key] = model.addVariable(name=f"{key}_on_{arc.name()}", ub=ub)
+    # SOS1 - Capacity assignment selector for each root
+    # Capacity has step-wise costs and must equal the terminal count assigned to the root.
+    # capacity_cost: list[int] => {0, cost_1, cost_2, ...} for 0, 1, 2, ...
+    # the zeroth index is the "empty" (non-selected) state for a given root
+    c_r = {}
+    for r in roots_indices:
+        for c in range(len(G[r]["capacity_cost"])):
+            c_r[(c, r)] = model.addBinary()
+
+    # I'm still not positive this is helpful in _most_ instances.
+    # When it helps it is noticeable and when it doesn't it doesn't hurt performance too much.
+    # I wasn't able to determine a pre-processing analysis that would allow for a solid option trigger.
+    # Skip adjacent (e.g., no constr for 0&1, but yes for 0&2)
+    # for r in roots_indices:
+    #     n = len(G[r]["capacity_cost"])
+    #     for c1 in range(n):
+    #         for c2 in range(c1 + 2, n):
+    #             model.addConstr(c_r[(c1, r)] + c_r[(c2, r)] <= 1)
+
+    # Flow for root on arc (i,j); when root can transit from i to j
+    f_r = {}
+    for i, j in G.edge_list():
+        common_rs = set(G[i]["transit_bounds"]) & set(G[j]["transit_bounds"])
+        for r in common_rs:
+            ub = min(G[i]["transit_bounds"][r], G[j]["transit_bounds"][r])
+            f_r[(r, i, j)] = model.addVariable(lb=0, ub=ub)
 
     # Objective
-    prize_values = [
-        int(plant.region_prizes[region.id]["value"]) * arc.vars[f"regionflow_{region.id}"]
-        for plant in G["P"].values()
-        for region in plant.regions
-        for arc in plant.inbound_arcs
-        if region.id != str(SUPERROOT)
-    ]
-    model.setObjective(model.qsum(prize_values), sense=ObjSense.kMaximize)
+    # This is another of those changes where I am not positive on the utility of it.
+    # When it helps it is noticeable and when it doesn't it doesn't hurt performance too much.
+    # I wasn't able to determine a pre-processing analysis that would allow for a solid option trigger.
+    # Scale the prizes for the solver. The runner will use rounding to 1e6 for incumbent promotions.
+    # prizes = model.qsum(
+    #     x_t_r[(t, r)] * (prize / 1e6) for t in terminal_indices for r, prize in G[t]["prizes"].items()
+    # )
 
-    # Constraints
-    cost = model.addIntegral(name="cost", ub=config["budget"])
-    model.addConstr(cost == model.qsum(v.cost * v.vars["x"] for v in G["V"].values()), name="TotalCost")
+    prizes = model.qsum(
+        x_t_r[(t, r)] * int(prize) for t in terminal_indices for r, prize in G[t]["prizes"].items()
+    )
+    model.setObjective(prizes, sense=ObjSense.kMaximize)
 
-    for region in G["R"].values():
-        l_vars = [lodge.vars["x"] for lodge in G["L"].values() if lodge.regions[0] == region]
-        model.addConstr(model.qsum(l_vars) <= 1, name=f"lodging_{region.id}")
+    # Hard Budget Constraint
+    capacity_cost = model.qsum(
+        c_r[(c, r)] * cost for r in roots_indices for c, cost in enumerate(G[r]["capacity_cost"])
+    )
+    node_cost = model.qsum(x[i] * G[i]["need_exploration_point"] for i in G.node_indices())
+    model.addConstr(capacity_cost + node_cost <= config["budget"])
 
-    for v in G["V"].values():
-        if v.type not in [NT.𝓢, NT.𝓣]:
-            link_in_out_by_region(model, v, v.inbound_arcs, v.outbound_arcs)
+    # (Terminal, root) assignment constraints
+    for r in roots_indices:
+        assigned = model.qsum(x_t_r[(t, r)] for t in terminal_indices if (t, r) in x_t_r)
+        # Any terminal assigned to root selects root
+        model.addConstr(assigned <= G[r]["ub"] * x[r])
+    for t in terminal_indices:
+        assigned = model.qsum(x_t_r[(t, r)] for r in G[t]["prizes"])
+        # Any root assigned by terminal selects terminal
+        model.addConstr(x[t] >= assigned)
+        # Terminals may be assigned to at most a single root
+        model.addConstr(assigned <= 1)
+    if super_root_index is not None:
+        # Super root must be selected
+        model.addConstr(x[super_root_index] == 1)
+        # All super terminals must be assigned to super root
+        for t in super_terminal_indices:
+            model.addConstr(x_t_r[(t, super_root_index)] == 1)
+            model.addConstr(x[t] == 1)
 
-    link_in_out_by_region(model, G["V"]["𝓣"], G["V"]["𝓣"].inbound_arcs, G["V"]["𝓢"].outbound_arcs)
-    model.addConstr(G["V"]["𝓢"].vars["x"] == 1, name="x_source")
-
-    for node in G["V"].values():
-        if node.type in [NT.S, NT.T]:
-            continue
-
-        in_neighbors = [arc.source.vars["x"] for arc in node.inbound_arcs]
-        out_neighbors = [arc.destination.vars["x"] for arc in node.outbound_arcs]
-        if node.isWaypoint:
-            model.addConstr(model.qsum(in_neighbors) - 2 * node.vars["x"] >= 0)
-        else:
-            model.addConstr(model.qsum(in_neighbors) + model.qsum(out_neighbors) - 2 * node.vars["x"] >= 0)
-        model.addConstr(model.qsum(out_neighbors) >= node.vars["x"])
-
-    # Edge case handling.
-    # If region 619 is active it must be connected to a near town.
-    # There are three connection paths to select from...
-    connect_sets = [[1321, 1327, 1328, 1329, 1376], [1321, 1327, 1328, 1329, 1330, 1375], [1339]]
-    connect_vars = []
-    for i, connect_set in enumerate(connect_sets):
-        x = model.addBinary(name=f"x_region_619_connect_{i}")
-        connect_vars.append(x)
-        model.addConstr(
-            model.qsum([G["V"][f"waypoint_{wp}"].vars["x"] for wp in connect_set]) >= len(connect_set) * x
+    # Ranked basins cuts
+    basins = G.attrs.get("basins", {})
+    for r, (basin_ts, cut_value, cut_nodes) in basins.items():
+        outside_assigned = model.qsum(
+            x_t_r[(t, r)] for t in terminal_indices if t not in basin_ts and (t, r) in x_t_r
         )
-    model.addConstr(model.qsum(connect_vars) >= G["V"]["region_619"].vars["x"])
+        model.addConstr(
+            outside_assigned <= cut_value * model.qsum(x[b] for b in cut_nodes if b in G.node_indices())
+        )
 
-    return model
+    # Node/flow based constraints
+    # All flow is accumulated from terminals to roots
+    flow_roots = roots_indices + ([super_root_index] if super_root_index is not None else [])
+    terminal_and_roots = set(terminal_indices) | set(super_terminal_indices) | set(flow_roots)
+
+    for i in G.node_indices():
+        predecessors = G.predecessor_indices(i)
+        successors = G.successor_indices(i)
+        neighbors = set(predecessors) | set(successors)
+        x_neighbors = [x[j] for j in neighbors]
+
+        # Neighbor selection: redundant for selection but imposes a transitive
+        # property to selected nodes to improve solution runtime.
+        if i in terminal_and_roots:
+            # A selected terminal or root must have at least one selected neighbor
+            model.addConstr(model.qsum(x_neighbors) >= 1 * x[i])
+        else:
+            # A selected intermediate must have at least two selected neighbors
+            model.addConstr(model.qsum(x_neighbors) >= 2 * x[i])
+
+        for r in flow_roots:
+            if r not in G[i]["transit_bounds"] or G[i]["transit_bounds"][r] == 0:
+                continue
+
+            r_ub = G[r]["ub"]
+            in_flow = model.qsum(f_r[(r, j, i)] for j in predecessors if (r, j, i) in f_r)
+            out_flow = model.qsum(f_r[(r, i, j)] for j in successors if (r, i, j) in f_r)
+
+            # Node selection: any flow selects node
+            model.addConstr(in_flow <= r_ub * x[i])
+            model.addConstr(out_flow <= r_ub * x[i])
+
+            # Flow
+            if i == r:
+                if r != super_root_index:
+                    # Flow at root: all assigned terminals must be accounted for
+                    model.addConstr(out_flow == 0)
+                    model.addConstr(
+                        in_flow == model.qsum(x_t_r[(t, r)] for t in terminal_indices if (t, r) in x_t_r)
+                    )
+                    # Capacity at root: capacity cost list has a no-cost 'empty' zeroth index with capacity 0
+                    capacity_costs = G[r]["capacity_cost"]
+                    # While this could be `== 1` empirical testing suggests `== x[r]` is more effective
+                    model.addConstr(model.qsum(c_r[(c, r)] for c in range(len(capacity_costs))) == x[r])
+                    model.addConstr(
+                        in_flow == model.qsum(c * c_r[(c, r)] for c in range(len(capacity_costs)))
+                    )
+                else:
+                    # Flow at SUPER_ROOT is only allowed for incoming SUPER_TERMINAL transit
+                    # Super root has no capacity limit or capacity cost.
+                    model.addConstr(out_flow == 0)
+                    model.addConstr(in_flow == len(super_terminal_indices))
+                    model.addConstr(in_flow == model.qsum(x_t_r[(t, r)] for t in super_terminal_indices))
+
+            elif i in terminal_indices and (i, r) in x_t_r:
+                # Flow at terminal: assigned terminals have one unit of out_flow.
+                # Terminals are leaf nodes so in_flow is zero
+                model.addConstr(out_flow == x_t_r[(i, r)])
+                model.addConstr(in_flow == 0)
+
+            elif i in super_terminal_indices and r == super_root_index:
+                # Flow at super terminal
+                model.addConstr(out_flow - in_flow == 1)
+
+            else:
+                # Flow at intermediate node
+                model.addConstr(out_flow - in_flow == 0)
+
+    return model, {"x": x, "x_t_r": x_t_r, "c_r": c_r, "f_r": f_r}
 
 
-def optimize(data: dict, graph_data: GraphData, controller: SolverController) -> Highs:
+def optimize(
+    data: dict,
+    controller: SolverController,
+) -> tuple[Highs, dict]:
+    """Create and solve the MIP problem for the given graph and configuration."""
+    G = data["solver_graph"]
+    assert isinstance(G, PyDiGraph)
     num_threads = data["config"]["solver"]["num_threads"]
+
+    if data["base_empire"] is not None:
+        prev_terminals_sets = extract_base_empire(G, data["base_empire"])
+    else:
+        prev_terminals_sets = {}
+
     print(
-        f"\nSolving:  graph with {len(graph_data['V'])} nodes and {len(graph_data['E'])} arcs"
+        f"\nSolving:  graph with {G.num_nodes()} nodes and {G.num_edges()} arcs"
         f"\n  Using:  budget of {data['config']['budget']}"
         f"\n   With:  {num_threads} processes."
     )
 
-    print("Creating mip problem...")
-    model = create_model(data["config"], graph_data)
+    print("Creating mip model...")
+    model, vars = create_model(G, data["config"], prev_terminals_sets=prev_terminals_sets)
 
     print("Solving mip problem...")
-    options = {k: v for k, v in data["config"]["solver"].items()}
-    for option_name, option_value in options.items():
-        # Non-standard HiGHS options need filtering...
-        if option_name not in ["num_threads", "mip_improvement_timeout"]:
-            model.setOptionValue(option_name, option_value)
+    model = solve(model, data["config"]["solver"], controller)
 
-    model = solve(model, options, controller)
-
-    return model
+    return model, vars

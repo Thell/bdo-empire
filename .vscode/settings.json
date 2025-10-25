@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        ".\\src\\bdo_empire",
+    ],
+}

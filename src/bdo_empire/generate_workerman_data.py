@@ -1,20 +1,18 @@
 # generate_workerman_data.py
 
 from collections import Counter
-import locale
 
 from highspy import Highs
-import natsort
-import networkx as nx
+import rustworkx as rx
+from rustworkx import PyDiGraph
 from tabulate import tabulate
 
+from api_common import CALPHEON_KEY, SUPER_ROOT, extract_base_empire
+from bdo_empire.api_rx_pydigraph import subgraph_stable
 import bdo_empire.data_store as ds
-from bdo_empire.generate_graph_data import GraphData
-
-SUPERROOT = 99999
 
 
-def get_workerman_json(workers, data, lodging):
+def generate_workerman_json(workers, data, lodging):
     """Populate and return a standard 'dummy' instance of the workerman dict."""
     region_strings = ds.read_strings_csv("Regioninfo.csv")
     lodgingP2W = {}
@@ -51,190 +49,262 @@ def make_workerman_worker(town_id: int, origin_id: int, worker_data: dict, stash
     return worker
 
 
-def order_workerman_workers(graph, user_workers: list[dict], solution_distances):
-    """Order user workers into import order for correct workerman paths construction."""
+# def order_workerman_workers(graph, user_workers: list[dict], solution_distances):
+#     """Order user workers into import order for correct workerman paths construction."""
 
-    # Order by shortest origin -> town paths to break ties by nearest nodes.
-    distance_indices = zip(list(range(len(solution_distances))), solution_distances)
-    distance_indices = sorted(distance_indices, key=lambda x: x[1])
-    workerman_user_workers = [user_workers[i] for i, _ in distance_indices]
+#     # Order by shortest origin -> town paths to break ties by nearest nodes.
+#     distance_indices = zip(list(range(len(solution_distances))), solution_distances)
+#     distance_indices = sorted(distance_indices, key=lambda x: x[1])
+#     workerman_user_workers = [user_workers[i] for i, _ in distance_indices]
 
-    # Iterative ordering of user workers by shortest paths with weight removal on used arcs.
-    ordered_workers = []
-    while workerman_user_workers:
-        distances = []
-        all_pairs = dict(nx.all_pairs_bellman_ford_path_length(graph, weight="weight"))
-        for worker in workerman_user_workers:
-            distance = all_pairs[str(worker["tnk"])][str(worker["job"]["pzk"])]
-            distances.append(distance)
-        min_value = min(distances)
-        min_indice = distances.index(min_value)
-        worker = workerman_user_workers[min_indice]
-        ordered_workers.append(worker)
-        workerman_user_workers.pop(min_indice)
+#     # Iterative ordering of user workers by shortest paths with weight removal on used arcs.
+#     ordered_workers = []
+#     while workerman_user_workers:
+#         distances = []
+#         all_pairs = dict(nx.all_pairs_bellman_ford_path_length(graph, weight="weight"))
+#         for worker in workerman_user_workers:
+#             distance = all_pairs[str(worker["tnk"])][str(worker["job"]["pzk"])]
+#             distances.append(distance)
+#         min_value = min(distances)
+#         min_indice = distances.index(min_value)
+#         worker = workerman_user_workers[min_indice]
+#         ordered_workers.append(worker)
+#         workerman_user_workers.pop(min_indice)
 
-        short_path = nx.shortest_path(graph, str(worker["tnk"]), str(worker["job"]["pzk"]), "weight")
-        for s, d in zip(short_path, short_path[1:]):
-            if graph.edges[(s, d)]["weight"] >= 1:
-                for edge in graph.in_edges(d):
-                    graph.edges[edge]["weight"] = 0
-                break
+#         short_path = nx.shortest_path(graph, str(worker["tnk"]), str(worker["job"]["pzk"]), "weight")
+#         for s, d in zip(short_path, short_path[1:]):
+#             if graph.edges[(s, d)]["weight"] >= 1:
+#                 for edge in graph.in_edges(d):
+#                     graph.edges[edge]["weight"] = 0
+#                 break
 
-    return ordered_workers
-
-
-def generate_graph(graph_data: GraphData, model: Highs):
-    graph = nx.DiGraph()
-    exclude_keywords = ["lodging", "𝓢", "𝓣"]
-    graph_cost = 0
-    for var_key in [v.name for v in model.getVariables() if int(round(model.variableValue(v))) >= 1]:  # type: ignore
-        exclude = any(keyword in var_key for keyword in exclude_keywords)
-        if exclude:
-            continue
-
-        u, v = None, None
-        if "regionflow_" in var_key and "_on_" in var_key:
-            tmp = var_key.split("_on_")
-            tmp = tmp[1].split("_to_")
-            u = tmp[0]
-            v = tmp[1]
-        else:
-            continue
-
-        source, destination = u, v
-        weight = graph_data["V"][source].cost
-        graph_cost += weight
-        graph.add_edge(destination.split("_")[-1], source.split("_")[-1], weight=weight)
-
-    isolated = nx.isolates(graph)
-    graph.remove_nodes_from(isolated)
-    if "99999" in graph.nodes:
-        graph.remove_node("99999")
-    # print(f"All nodes: {sorted([int(v) for v in graph.nodes])}")
-    # print(f"Graph nodes cost: {graph_cost}")
-
-    return graph
+#     return ordered_workers
 
 
-def extract_solution(model: Highs) -> tuple[dict, dict, dict]:
-    lodging_vars = {}
-    origin_vars = {}
-    waypoint_vars = {}
-    for var_obj in model.getVariables():
-        var_value = model.variableValue(var_obj)
-        if not round(var_value) >= 1:  # type: ignore
-            continue
+def generate_graph(G: PyDiGraph, model: Highs, vars: dict):
+    """Sub graph G to the solution graph using only transitted nodes from terminal, root paths."""
+    # Since the Highs model is not setup to reduce the cost as well as maximize the value, we
+    # do it manually here.
+    terminal_sets = {}
+    key_list = list(vars["x_t_r"].keys())
+    for i, t_var in enumerate(vars["x_t_r"].values()):
+        if int(round(model.variableValue(t_var))) == 1:  # type: ignore
+            terminal, root = key_list[i]
+            terminal_sets[terminal] = root
 
-        var_key = var_obj.name
-        if var_key.startswith("flow_lodging_") and "_to_" not in var_key:
-            lodging_vars[var_key.replace("flow_", "")] = var_value
-        elif "_on_plant_" in var_key:
-            origin_vars[var_key.split("_")[4]] = var_key.split("_")[1]
-        elif var_key.startswith("x_waypoint") or var_key == "x_town_1343":
-            waypoint_vars[var_key.replace("x_", "")] = var_value
-    return lodging_vars, origin_vars, waypoint_vars
+    # Filter non-used nodes from the solution nodes using all terminal -> root paths.
+    active_graph_indices = [
+        i
+        for i, x_var in vars["x"].items()
+        if int(round(model.variableValue(x_var))) == 1  # type: ignore
+    ]
+    subG = subgraph_stable(active_graph_indices, G)
+    used_active_nodes = set()
+    for terminal, root in terminal_sets.items():
+        # Since the HiGHs solution is a tree we can just use hops of 1.
+        path = rx.dijkstra_shortest_paths(subG, terminal, root, default_weight=1)
+        assert path[root]
+        used_active_nodes.update(path[root])
+    subG.remove_nodes_from(set(subG.node_indices()) - used_active_nodes)
+
+    # At this point the super root, if present, is still in the graph but won't be used.
+    super_root_index = None
+    for i in G.node_indices():
+        if G[i]["waypoint_key"] == SUPER_ROOT:
+            super_root_index = i
+    if super_root_index is not None:
+        subG.remove_node(super_root_index)
+
+    return subG, terminal_sets
 
 
-def process_solution(origin_vars: dict, data: dict, graph_data: GraphData, graph: nx.DiGraph):
-    all_pairs = dict(nx.all_pairs_bellman_ford_path_length(graph, weight="weight"))
-    region_to_town = {v["region_key"]: k for k, v in data["exploration"].items() if v["is_base_town"]}
-
-    # Special handling for Ancado Inner Harbor which is not a base town but can have workers when vested.
-    region_to_town[619] = 1343
-
-    calculated_value = 0
-    distances = []
-    origin_cost = 0
-    outputs = []
-    town_ids = set()
+def generate_workerman_workers(G: PyDiGraph, terminal_sets: dict, data: dict):
     workerman_user_workers = []
-    root_ranks = []
-    stash_town_id = 601
-    for k, v in origin_vars.items():
-        town_id = region_to_town[int(v)]
-        town_ids.add(town_id)
-        distances.append(all_pairs[str(town_id)][k])
+    stash_town_id = CALPHEON_KEY
 
-        origin = graph_data["V"][f"plant_{k}"]
-        worker_data = origin.region_prizes[v]["worker_data"]
-        user_worker = make_workerman_worker(int(town_id), int(origin.id), worker_data, stash_town_id)
+    for terminal_index, root_index in terminal_sets.items():
+        terminal_data = G[terminal_index]
+        if terminal_data.get("is_super_terminal", False):
+            continue
+        root_data = G[root_index]
+        terminal_key = terminal_data["waypoint_key"]
+        root_key = root_data["waypoint_key"]
+
+        # NOTE: Plant values data is keyed by warehouse keys!
+        prize_data = data["plant_values"][terminal_key][root_data["region_key"]]
+        worker_data = prize_data["worker_data"]
+
+        user_worker = make_workerman_worker(root_key, terminal_key, worker_data, stash_town_id)
         workerman_user_workers.append(user_worker)
 
-        value = origin.region_prizes[v]["value"]
-        worker = origin.region_prizes[v]["worker"]
-        root_rank = list(origin.region_prizes.keys()).index(v) + 1
-        root_ranks.append(root_rank)
-
-        origin_cost += origin.cost
-        calculated_value += value
-
-        output = {
-            "warehouse": v,
-            "node": origin.id,
-            "worker": worker,
-            "value": locale.currency(round(value), grouping=True, symbol=True)[:-3],
-            "value_rank": root_rank,
-        }
-        outputs.append(output)
-
-    return calculated_value, distances, origin_cost, outputs, workerman_user_workers
+    return workerman_user_workers
 
 
-def print_summary(outputs, counts: dict, costs: dict, total_value: float):
+def print_summary(
+    G: PyDiGraph,
+    terminal_sets: dict,
+    lodging_specs: dict,
+    workers: list,
+    model: Highs,
+    vars: dict,
+    data: dict,
+):
     """Print town, origin, worker summary report."""
-    outputs = natsort.natsorted(outputs, key=lambda x: (x["warehouse"], x["node"]))
-    # colalign = ("right", "right", "left", "right", "right")
-    # print(tabulate(outputs, headers="keys", colalign=colalign))
-    print(tabulate(outputs, headers="keys"))
-    print("By Town:\n\n", tabulate([[k, v] for k, v in counts["by_regions"].items()]), "\n")
-    print("  Lodging cost:", costs["lodgings"])
-    print("  Worker Nodes:", counts["origins"], "cost:", costs["origins"])
-    print("     Waypoints:", counts["waypoints"], "cost:", costs["waypoints"])
-    print("    Total Cost:", sum(c for c in costs.values()))
-    print("         Value:", locale.currency(round(total_value), grouping=True, symbol=True)[:-3])
 
+    region_strings = data["region_strings"]
+    exploration_strings = data["exploration_strings"]
 
-def generate_workerman_data(prob: Highs, lodging: dict, data: dict, graph_data: GraphData) -> dict:
-    print("Creating workerman json...")
-    locale.setlocale(locale.LC_ALL, "")
+    ##### Prep the terminal sets to ensure no special handling is needed.
+    # Sort terminal_sets by root, then terminal value.
+    terminal_sets = {t: r for t, r in sorted(terminal_sets.items(), key=lambda item: (item[1], item[0]))}
 
-    graph = generate_graph(graph_data, prob)
-    lodging_vars, origin_vars, waypoint_vars = extract_solution(prob)
+    # Remove any terminal sets that are already in the base empire.
+    if data["base_empire"] is not None:
+        prev_terminals_sets = extract_base_empire(G, data["base_empire"])
+        terminal_sets = {t: r for t, r in terminal_sets.items() if t not in prev_terminals_sets}
 
-    # print(f"{lodging_vars=}")
-    # print(f"{origin_vars=}")
-    # print(f"{waypoint_vars=}")
+    # Remove any super terminal, super root pairs.
+    terminal_sets = {t: r for t, r in terminal_sets.items() if not G[t].get("is_super_terminal")}
 
-    solution = process_solution(origin_vars, data, graph_data, graph)
-    calculated_value, distances, origin_cost, outputs, workerman_user_workers = solution
-    workerman_ordered_workers = order_workerman_workers(graph, workerman_user_workers, distances)
-    workerman_json = get_workerman_json(workerman_ordered_workers, data, lodging)
+    ##### Worker summary section
+    # The first tabulated summary is each terminal, root pair with worker, value and value rank.
+    #
+    # warehouse  node          task                       worker     value    value_rank
+    # ---------  ------------  -----------------------  --------  --------  ------------
+    # Velia      Bartali Farm  Chicken Meat Production   7571 🐢  10472035             1
 
-    # Filter zero cost waypoints (towns) from waypoints
-    waypoint_vars = {k: v for k, v in waypoint_vars.items() if graph_data["V"][k].cost > 0}
-
-    counts: dict = {"origins": len(origin_vars), "waypoints": len(waypoint_vars)}
-    counts["by_regions"] = {
-        str(data["region_strings"][int(k)]): v
-        for k, v in Counter(origin_vars.values()).most_common()
-        if int(k) != SUPERROOT
+    species_to_symbol = (
+        dict.fromkeys([0, 3, 5, 6], "👺") | dict.fromkeys([2, 4, 8], "🐢") | dict.fromkeys([1, 7, 9], "👨")
+    )
+    chatKey_to_species_symbol_map = {
+        char_key: species_to_symbol.get(species, "")
+        for species_data in ds.read_json("region_workers.json").values()
+        for species, char_key in species_data.items()
     }
+
+    table_rows = []
+    for terminal, root in terminal_sets.items():
+        terminal_data = G[terminal]
+        terminal_key = terminal_data["waypoint_key"]
+        root_data = G[root]
+        root_region_key = root_data["region_key"]
+
+        prize_data = data["plant_values"][terminal_key][root_region_key]
+        worker_data = prize_data["worker_data"]
+
+        worker = worker_data["charkey"]
+        worker = f"{worker} {chatKey_to_species_symbol_map[worker]}"
+
+        table_rows.append({
+            "warehouse": region_strings[root_region_key],
+            "node": exploration_strings[terminal_data["link_list"][0]],
+            "task": exploration_strings[terminal_key],
+            "worker": worker,
+            "value": G[terminal]["prizes"][root],
+            "value_rank": list(G[terminal]["prizes"]).index(root) + 1,
+        })
+
+    if data["base_empire"] is not None:
+        print("\nExtension to base empire:\n")
+    print(tabulate(table_rows, headers="keys"))
+    print()
+
+    ##### Region capacity summary section
+    # The second tabulated summary is the total number of origins per region (ie: capacity count used),
+    # ordered by the most used region.
+    #
+    # warehouse              used  purchased  cost
+    # ---------------------  ----  ---------  ----
+    # Bukpo                     3
+    # Velia                     2
+    # Glish                     1
+
+    capacity_used = Counter(terminal_sets.values())
+    capacity_costs = {r: G[r]["capacity_cost"][c] for r, c in capacity_used.items()}
+
+    # The capacity purchased is the highest index matching the capacity cost.
+    capacity_purchased = {
+        r: len(cc := G[r]["capacity_cost"]) - 1 - cc[::-1].index(c) for r, c in capacity_costs.items()
+    }
+
+    table_rows = []
+    for root in capacity_used.keys():
+        root_region_key = G[root]["region_key"]
+        table_rows.append({
+            "warehouse": region_strings.get(root_region_key, root_region_key),
+            "used": capacity_used[root],
+            "purchased": capacity_purchased[root],
+            "cost": capacity_costs[root],
+        })
+
+    table_rows = sorted(table_rows, key=lambda x: x["used"], reverse=True)
+    if data["base_empire"] is not None:
+        print("\nExtension to base empire:\n")
+    print(tabulate(table_rows, headers="keys"))
+    print()
+
+    ##### Final quick cost summary section
+    # The third tabulated summary is the total number of origins, waypoints and lodging cost.
+    #
+    # Lodging cost: 1
+    # Worker Nodes: 8 cost: 8
+    #    Waypoints: 9 cost: 11
+    #   Total Cost: 20
+    #  Total Value: 10472035
+
+    waypoints = {
+        i: G[i]["need_exploration_point"]
+        for i in G.node_indices()
+        if i not in terminal_sets.keys() and G[i]["need_exploration_point"] > 0
+    }
+
+    counts: dict = {
+        "origins": len(terminal_sets),
+        "waypoints": len(waypoints),
+    }
+
+    total_capacity_cost = sum(capacity_costs.values())
+    total_terminal_cost = sum([G[t]["need_exploration_point"] for t in terminal_sets.keys()])
     costs = {
-        "lodgings": sum(graph_data["V"][k].cost for k in lodging_vars),
-        "origins": origin_cost,
-        "waypoints": sum(graph_data["V"][k].cost for k in waypoint_vars),
+        "lodgings": total_capacity_cost,
+        "origins": total_terminal_cost,
+        "waypoints": sum(waypoints.values()),
     }
-    # print(f"{counts=}")
-    # print(f"{costs=}")
-    # print(f"{calculated_value=}\n")
 
-    print_summary(outputs, counts, costs, calculated_value)
+    total_terminal_value = sum([G[t]["prizes"][r] for t, r in terminal_sets.items()])
+
+    if data["base_empire"] is not None:
+        print("\nExtension to base empire:\n")
+        print("  Added Lodging cost:", costs["lodgings"])
+        print("  Added Worker Nodes:", counts["origins"], "cost:", costs["origins"])
+        print("     Added Waypoints: Unknown (depends on base empire routing)")
+        print("   Added Total Value:", total_terminal_value)
+    else:
+        print("  Lodging cost:", costs["lodgings"])
+        print("  Worker Nodes:", counts["origins"], "cost:", costs["origins"])
+        print("     Waypoints:", counts["waypoints"], "cost:", costs["waypoints"])
+        print("    Total Cost:", sum(c for c in costs.values()))
+        print("   Total Value:", total_terminal_value)
+    print()
     if data["force_active_node_ids"]:
         print(
             f"There are {len(data['force_active_node_ids'])}",
             "force activated node connections included in waypoints.\n",
         )
-    if "town_1343" in waypoint_vars.keys():
-        print("Ancado Inner Harbor active (cost 1) and included with waypoints.")
+    print()
+
+
+def generate_workerman_data(highs_results: tuple[Highs, dict], lodging_specs: dict, data: dict) -> dict:
+    print("Creating workerman json...\n")
+
+    model, vars = highs_results
+    G = data["solver_graph"]
+    solution_subG, terminal_sets = generate_graph(G, model, vars)
+    assert isinstance(solution_subG, PyDiGraph)
+
+    workers = generate_workerman_workers(solution_subG, terminal_sets, data)
+    workerman_json = generate_workerman_json(workers, data, lodging_specs)
+
+    print_summary(solution_subG, terminal_sets, lodging_specs, workers, model, vars, data)
 
     return workerman_json

@@ -5,7 +5,6 @@ from enum import Enum
 import json
 from math import inf
 from pathlib import Path
-from random import randint
 from threading import Thread
 from tkinter import ACTIVE, DISABLED, END, NORMAL, filedialog, Listbox
 
@@ -13,6 +12,7 @@ import customtkinter as ctk
 from CTkToolTip import CTkToolTip as ctktt
 from psutil import cpu_count
 
+from api_common import set_logger
 import bdo_empire.data_store as ds
 from bdo_empire.generate_graph_data import generate_graph_data
 from bdo_empire.generate_reference_data import generate_reference_data
@@ -37,10 +37,21 @@ solver_config = {
     "mip_rel_gap": 1e-4,
     "mip_feasibility_tolerance": 1e-4,
     "primal_feasibility_tolerance": 1e-4,
-    "random_seed": randint(0, 2147483647),
+    "random_seed": 0,
     "time_limit": inf,
     "mip_improvement_timeout": inf,
-    "mip_heuristic_run_root_reduced_cost": False,
+    "mip_heuristic_run_root_reduced_cost": True,
+}
+
+solver_config_descriptions = {
+    "num_threads": "Number of threads to use.",
+    "mip_rel_gap": "Relative gap tolerance between MIP objective and upper bound.",
+    "mip_feasibility_tolerance": "Tolerance for MIP feasibility.",
+    "primal_feasibility_tolerance": "Tolerance for primal feasibility.",
+    "random_seed": "Random seed.",
+    "time_limit": "Global time limit regardless of MIP improvement.",
+    "mip_improvement_timeout": "MIP timeout after last improvement.",
+    "mip_heuristic_run_root_reduced_cost": "Run MIP reduced cost heuristic on root node. (Recommend 'False' on sub 300 budget empires.)",
 }
 
 
@@ -77,25 +88,6 @@ lodging_specifications = {
     "Hakinza Sanctuary": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 7},
 }
 
-# TODO: add node type to grinding node listings?
-# 0: normal
-# 1: village
-# 2: city
-# 3: gate
-# 4: farm
-# 5: trade
-# 6: collect
-# 7: quarry
-# 8: logging
-# 9: dangerous
-# 10: finance
-# 11: fish_trap
-# 12: minor_finance
-# 13: monopoly_farm
-# 14: craft
-# 15: excavation
-# 16: count
-
 
 def try_parse_int(val, default=0):
     try:
@@ -127,7 +119,8 @@ class EmpireOptimizerApp(ctk.CTk):
         super().__init__()
 
         self.title(f"Empire Optimizer - {get_version()}")
-        self.geometry("720x350")
+        # Each row is 40 pixels and padding is 10
+        self.geometry("720x400")
 
         self.data_state = WidgetState.Required
         self.cp_state = WidgetState.Required
@@ -137,6 +130,7 @@ class EmpireOptimizerApp(ctk.CTk):
         self.grinding_state = WidgetState.Optional
         self.outpath_state = WidgetState.Required
         self.optimize_state = WidgetState.Waiting
+        self.baseempire_state = WidgetState.Optional
 
         self.config_entries = {}
         self.grinding_entries = {}
@@ -199,6 +193,18 @@ class EmpireOptimizerApp(ctk.CTk):
         self.modifiers_status.grid(row=row, column=3, padx=10, pady=10)
         ctktt(self.modifiers_label, message="Set to file exported from workerman's modifiers page.")
         ctktt(self.modifiers_entry, message="Set to file exported from workerman's modifiers page.")
+
+        row += 1
+        self.baseempire_label = ctk.CTkLabel(self, text="Base Empire")
+        self.baseempire_label.grid(row=row, column=0, padx=10, pady=10)
+        self.baseempire_entry = ctk.CTkEntry(self, width=300)
+        self.baseempire_entry.grid(row=row, column=1, padx=10, pady=10)
+        self.baseempire_button = ctk.CTkButton(self, text="Browse", command=self.browse_baseempire)
+        self.baseempire_button.grid(row=row, column=2, padx=10, pady=10)
+        self.baseempire_status = ctk.CTkLabel(self, text=self.baseempire_state.name)
+        self.baseempire_status.grid(row=row, column=3, padx=10, pady=10)
+        ctktt(self.baseempire_label, message="Set to empire json file exported from workerman.")
+        ctktt(self.baseempire_entry, message="Set to empire json file exported from workerman.")
 
         row += 1
         self.outpath_label = ctk.CTkLabel(self, text="Output Path")
@@ -587,6 +593,12 @@ class EmpireOptimizerApp(ctk.CTk):
             cost_label.set("—")
             return
 
+        value = int(value)
+        if value < 0:
+            label_widget.configure(text="Invalid", text_color="red")
+            cost_label.set("—")
+            return
+
         try:
             bonus = int(self.lodging_entries[town]["bonus"].get())
             reserved = int(self.lodging_entries[town]["reserved"].get())
@@ -723,6 +735,13 @@ class EmpireOptimizerApp(ctk.CTk):
             self.outpath_entry.insert(0, file_path)
             self.validate_outpath(file_path)
 
+    def browse_baseempire(self):
+        file_path = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json")])
+        if file_path:
+            self.baseempire_entry.delete(0, ctk.END)
+            self.baseempire_entry.insert(0, file_path)
+            self.validate_baseempire(file_path)
+
     def validate_cp(self):
         entry = self.cp_entry.get()
         if entry.isdigit():
@@ -772,6 +791,16 @@ class EmpireOptimizerApp(ctk.CTk):
         self.modifiers_status.update()
         self.update_optimize_button_state()
 
+    def validate_baseempire(self, file_path):
+        if Path(file_path).is_file():
+            self.baseempire_state = WidgetState.Ready
+            self.baseempire_status.configure(text=self.baseempire_state.name, text_color="green")
+        else:
+            self.baseempire_state = WidgetState.Error
+            self.baseempire_status.configure(text=self.baseempire_state.name, text_color="red")
+        self.baseempire_status.update()
+        self.update_optimize_button_state()
+
     def update_optimize_button_state(self):
         if self.cp_entry.get().isdigit():
             self.cp_state = WidgetState.Ready
@@ -804,8 +833,8 @@ class EmpireOptimizerApp(ctk.CTk):
 
             entry_var = ctk.StringVar(value=str(value))
             entry = ctk.CTkEntry(config_window, textvariable=entry_var)
+            ctktt(entry, message=solver_config_descriptions[setting])
             entry.grid(row=row, column=1, padx=10, pady=5)
-
             self.config_entries[setting] = entry_var
             row += 1
         config_window.protocol("WM_DELETE_WINDOW", lambda: self.save_config_data(config_window))
@@ -843,11 +872,14 @@ class EmpireOptimizerApp(ctk.CTk):
 
         grindTakenList = self.grinding_entries.get("keys", [])
         data = generate_reference_data(config, prices, modifiers, lodging_specifications, grindTakenList)
-        graph_data = generate_graph_data(data)
+        data = generate_graph_data(data)
+        if self.baseempire_entry.get():
+            data["base_empire"] = json.loads(Path(self.baseempire_entry.get()).read_text(encoding="utf-8"))
+        else:
+            data["base_empire"] = None
 
-        prob = optimize_highspy(data, graph_data, controller=self.solver_controller)
-
-        workerman_json = generate_workerman_data(prob, lodging_specifications, data, graph_data)
+        highs_results = optimize_highspy(data, self.solver_controller)
+        workerman_json = generate_workerman_data(highs_results, lodging_specifications, data)
 
         outpath = Path(self.outpath_entry.get())
         outfile = outpath.joinpath("optimized_empire.json")
@@ -879,4 +911,6 @@ def main():
 
 
 if __name__ == "__main__":
+    config = {"logger": {"level": "INFO", "format": "<level>{message}</level>"}}
+    set_logger(config)
     main()
