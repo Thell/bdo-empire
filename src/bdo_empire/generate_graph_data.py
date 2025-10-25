@@ -42,7 +42,7 @@ def setup_super_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> int 
 
     if data["force_active_node_ids"]:
         logger.info("  setting up super-terminals...")
-        from api_rx_pydigraph import inject_super_root
+        from bdo_empire.api_rx_pydigraph import inject_super_root
 
         for node in solver_graph.nodes():
             node["is_super_terminal"] = (
@@ -282,7 +282,7 @@ def reduce_bounds_via_root_pruning(G: PyDiGraph) -> None:
     """
     logger.info("Reducing bounds via root-specific pruning (RSP)...")
 
-    from api_common import SUPER_ROOT
+    from bdo_empire.api_common import SUPER_ROOT
 
     super_root_index = None
     super_terminal_indices = []

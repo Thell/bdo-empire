@@ -906,11 +906,11 @@ class EmpireOptimizerApp(ctk.CTk):
 
 
 def main():
+    config = {"logger": {"level": "INFO", "format": "<level>{message}</level>"}}
+    set_logger(config)
     app = EmpireOptimizerApp()
     app.mainloop()
 
 
 if __name__ == "__main__":
-    config = {"logger": {"level": "INFO", "format": "<level>{message}</level>"}}
-    set_logger(config)
     main()
