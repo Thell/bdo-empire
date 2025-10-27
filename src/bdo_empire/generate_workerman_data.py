@@ -49,38 +49,6 @@ def make_workerman_worker(town_id: int, origin_id: int, worker_data: dict, stash
     return worker
 
 
-# def order_workerman_workers(graph, user_workers: list[dict], solution_distances):
-#     """Order user workers into import order for correct workerman paths construction."""
-
-#     # Order by shortest origin -> town paths to break ties by nearest nodes.
-#     distance_indices = zip(list(range(len(solution_distances))), solution_distances)
-#     distance_indices = sorted(distance_indices, key=lambda x: x[1])
-#     workerman_user_workers = [user_workers[i] for i, _ in distance_indices]
-
-#     # Iterative ordering of user workers by shortest paths with weight removal on used arcs.
-#     ordered_workers = []
-#     while workerman_user_workers:
-#         distances = []
-#         all_pairs = dict(nx.all_pairs_bellman_ford_path_length(graph, weight="weight"))
-#         for worker in workerman_user_workers:
-#             distance = all_pairs[str(worker["tnk"])][str(worker["job"]["pzk"])]
-#             distances.append(distance)
-#         min_value = min(distances)
-#         min_indice = distances.index(min_value)
-#         worker = workerman_user_workers[min_indice]
-#         ordered_workers.append(worker)
-#         workerman_user_workers.pop(min_indice)
-
-#         short_path = nx.shortest_path(graph, str(worker["tnk"]), str(worker["job"]["pzk"]), "weight")
-#         for s, d in zip(short_path, short_path[1:]):
-#             if graph.edges[(s, d)]["weight"] >= 1:
-#                 for edge in graph.in_edges(d):
-#                     graph.edges[edge]["weight"] = 0
-#                 break
-
-#     return ordered_workers
-
-
 def generate_graph(G: PyDiGraph, model: Highs, vars: dict):
     """Sub graph G to the solution graph using only transitted nodes from terminal, root paths."""
     # Since the Highs model is not setup to reduce the cost as well as maximize the value, we
@@ -143,7 +111,7 @@ def generate_workerman_workers(G: PyDiGraph, terminal_sets: dict, data: dict):
 def print_summary(
     G: PyDiGraph,
     terminal_sets: dict,
-    lodging_specs: dict,
+    lodging_specifications: dict,
     workers: list,
     model: Highs,
     vars: dict,
@@ -222,19 +190,22 @@ def print_summary(
     capacity_used = Counter(terminal_sets.values())
     capacity_costs = {r: G[r]["capacity_cost"][c] for r, c in capacity_used.items()}
 
-    # The capacity purchased is the highest index matching the capacity cost.
-    capacity_purchased = {
-        r: len(cc := G[r]["capacity_cost"]) - 1 - cc[::-1].index(c) for r, c in capacity_costs.items()
-    }
-
     table_rows = []
     for root in capacity_used.keys():
         root_region_key = G[root]["region_key"]
+        warehouse_name = region_strings.get(root_region_key, root_region_key)
+
+        spec = lodging_specifications.get(warehouse_name, {"bonus": 0, "reserved": 0})
+        used = capacity_used[root]
+        cost = capacity_costs[root]
+
         table_rows.append({
-            "warehouse": region_strings.get(root_region_key, root_region_key),
-            "used": capacity_used[root],
-            "purchased": capacity_purchased[root],
-            "cost": capacity_costs[root],
+            "warehouse": warehouse_name,
+            "bonus": spec["bonus"],
+            "reserved": spec["reserved"],
+            "used": used,
+            "cost": cost,
+            "prepaid": spec["prepaid"],
         })
 
     table_rows = sorted(table_rows, key=lambda x: x["used"], reverse=True)

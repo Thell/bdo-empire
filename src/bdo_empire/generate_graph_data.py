@@ -100,53 +100,46 @@ def setup_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> list[int]:
     return terminal_indices
 
 
-def setup_roots(solver_graph: PyDiGraph, data: dict[str, Any]):
-    """Prepares step-wise tiered root lodging costs."""
-    # The lodging costs of a worker town is a simple dict keyed by 0..capacity with cost values.
-    # The capacity is the minimum of the waypoint_ub and the towns maximum lodging capacity.
-    logger.info("  setting up root lodging costs...")
+def setup_roots(solver_graph, data):
+    """Populate each root node with ub and capacity_cost using precomputed bounds_costs."""
+    logger.info("  setting up root lodging costs from precomputed bounds_costs...")
     root_indices = solver_graph.attrs["root_indices"]
 
     for i in root_indices:
         node = solver_graph[i]
         region_key = node["region_key"]
-        lodgings = data["lodging_data"][region_key]
-        # num_free = lodgings["lodging_bonus"] + 1
-        num_free = lodgings["bonus"] + 1
+        lodging = data["lodging_data"][region_key]
 
-        dominant_lodgings = []
-        for n, lodging_data in lodgings.items():
-            if not isinstance(n, int):
+        # See generate_reference_data.get_region_lodging_bounds_costs for details
+        bounds_costs = lodging["bounds_costs"]
+        max_ub = lodging["max_ub"]
+
+        # capacity_cost[cap] = cost for cap in 0..max_ub
+        # We keep index 0 = 0 for the model's SOS1
+        capacity_cost = [0] * (max_ub + 1)
+
+        prev_cap = 0
+        prev_cost = 0
+        for cap, cost in bounds_costs:
+            cap = min(cap, max_ub)
+            # expand capacities to fill (prev_cap+1 .. cap) with this bound's cost
+            for idx in range(prev_cap + 1, cap + 1):
+                capacity_cost[idx] = cost
+            prev_cap = cap
+            prev_cost = cost
+
+            if prev_cap >= max_ub:
                 break
-            current_lodging_capacity = lodging_data[0]["lodging"]
-            current_lodging_cost = lodging_data[0]["cost"]
-            while len(dominant_lodgings) > 1 and current_lodging_cost < dominant_lodgings[-1]["cost"]:
-                dominant_lodgings.pop()
-            dominant_lodgings.append({"capacity": current_lodging_capacity, "cost": current_lodging_cost})
 
-        # increase the capacity of each dominant lodging by lodging_bonus + 1
-        for lodging in dominant_lodgings:
-            lodging["capacity"] += num_free
+        # fill any remaining capacities up to max_ub with the last known cost
+        for idx in range(prev_cap + 1, max_ub + 1):
+            capacity_cost[idx] = prev_cost
 
-        # ub = min(lodgings["max_ub"] + num_free, data["config"]["waypoint_ub"] + 1)
-        ub = min(lodgings["max_ub"] + num_free, data["config"]["max_waypoint_ub"] + 1)
-        capacity_cost = [0] * (ub)
-        current_index = num_free
-
-        while current_index <= ub + 1 and len(dominant_lodgings) > 0:
-            capacity_limit = min(ub + 1, dominant_lodgings[0]["capacity"] + num_free)
-            capacity_cost[current_index:capacity_limit] = [dominant_lodgings[0]["cost"]] * (
-                capacity_limit - current_index
-            )
-            current_index = capacity_limit
-            dominant_lodgings.pop(0)
-
-        node["ub"] = ub - 1
+        node["ub"] = max_ub
         node["capacity_cost"] = capacity_cost
 
-    for i in root_indices:
-        logger.debug(
-            f"{solver_graph[i]['waypoint_key']:>5} region_key: {solver_graph[i]['region_key']:>5} ub: {solver_graph[i]['ub']} costs: {solver_graph[i]['capacity_cost']}"
+        logger.trace(
+            f"{node['waypoint_key']:>5} region_key: {region_key:>5} ub: {max_ub} costs: {capacity_cost}"
         )
 
 
