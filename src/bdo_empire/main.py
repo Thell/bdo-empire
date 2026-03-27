@@ -41,6 +41,7 @@ solver_config = {
     "time_limit": inf,
     "mip_improvement_timeout": inf,
     "mip_heuristic_run_root_reduced_cost": True,
+    "threads": 1,
 }
 
 solver_config_descriptions = {

@@ -22,7 +22,11 @@ It does not
 This program uses the HiGHS High Performance Optimization Software to solve
 the MIP using branch and cut. The parameters chosen guarantee the result is
 within 0.01% of the optimum value but in practice it is optimum for all test
-cases used during the development and testing of the model.
+cases used during the development and testing of the model. If exact results
+are desired the `main.py` source can be edited such that `optimize_config`
+`top_n`, `nearest_n` and `max_waypoint_ub` are increased to at least
+`10`, `10`, `25` respectively but do this with caution because the runtime can
+and will increase to multiple hours.
 
 **NOTE:**  Every change in input or options can alter the runtime! There is no
 real average but empirically budgets of ~350 or ~600 take the longest and all

@@ -84,9 +84,14 @@ def solve(model: Highs, config: dict, controller: SolverController) -> Highs:
     physical_cpu_count = psutil.cpu_count(logical=False)
     physical_cpu_count = 1 if physical_cpu_count is None else max(2, physical_cpu_count) - 1
     num_threads = config.get("num_threads", physical_cpu_count)
-    if num_threads < 1:
-        num_threads = 1
+    num_threads = max(num_threads, 1)
+    if num_threads > 1:
+        model.setOptionValue("threads", 1)  # HiGHs internal threads
 
+    # Reduce the amount of logging (still captures all important messages)
+    model.setOptionValue("mip_min_logging_interval", 30)
+
+    # UI provided user options
     options = {k: v for k, v in config.items()}
     for option_name, option_value in options.items():
         # Non-standard HiGHS options need filtering...
@@ -96,8 +101,6 @@ def solve(model: Highs, config: dict, controller: SolverController) -> Highs:
             model.setOptionValue(option_name, option_value)
 
     clones = [model] + [Highs() for _ in range(num_threads - 1)]
-    if num_threads > 1:
-        clones[0].setOptionValue("threads", 1)  # HiGHs internal threads
     clones[0].HandleUserInterrupt = True
     clones[0].enableCallbacks()
 

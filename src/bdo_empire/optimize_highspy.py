@@ -31,13 +31,15 @@ def create_model(
 
     # Variables
     # Node selection for each node in graph to determine if node is in forest.
-    x = model.addBinaries(G.node_indices())
+    x = model.addBinaries(G.node_indices(), name=[f"x_{G[i]['waypoint_key']}" for i in G.node_indices()])
 
     # Root assignment selector for each terminal (terminal, root) pair
     x_t_r = {}
     for t in terminal_indices:
+        tw = G[t]["waypoint_key"]
         for r in G[t]["prizes"]:
-            x_t_r[(t, r)] = model.addBinary()
+            rw = G[r]["waypoint_key"]
+            x_t_r[(t, r)] = model.addBinary(name=f"xtr_{tw}_{rw}")
     for t in super_terminal_indices:
         x_t_r[(t, super_root_index)] = model.addBinary()
 
@@ -59,10 +61,10 @@ def create_model(
         for c in range(len(G[r]["capacity_cost"])):
             c_r[(c, r)] = model.addBinary()
 
-    # I'm still not positive this is helpful in _most_ instances.
-    # When it helps it is noticeable and when it doesn't it doesn't hurt performance too much.
-    # I wasn't able to determine a pre-processing analysis that would allow for a solid option trigger.
-    # Skip adjacent (e.g., no constr for 0&1, but yes for 0&2)
+    # # I'm still not positive this is helpful in _most_ instances.
+    # # When it helps it is noticeable and when it doesn't it doesn't hurt performance too much.
+    # # I wasn't able to determine a pre-processing analysis that would allow for a solid option trigger.
+    # # Skip adjacent (e.g., no constr for 0&1, but yes for 0&2)
     # for r in roots_indices:
     #     n = len(G[r]["capacity_cost"])
     #     for c1 in range(n):
@@ -82,23 +84,36 @@ def create_model(
     # When it helps it is noticeable and when it doesn't it doesn't hurt performance too much.
     # I wasn't able to determine a pre-processing analysis that would allow for a solid option trigger.
     # Scale the prizes for the solver. The runner will use rounding to 1e6 for incumbent promotions.
-    # prizes = model.qsum(
-    #     x_t_r[(t, r)] * (prize / 1e6) for t in terminal_indices for r, prize in G[t]["prizes"].items()
-    # )
-
     prizes = model.qsum(
-        x_t_r[(t, r)] * int(prize) for t in terminal_indices for r, prize in G[t]["prizes"].items()
+        x_t_r[(t, r)] * (prize / 1e6) for t in terminal_indices for r, prize in G[t]["prizes"].items()
     )
+
+    # prizes = model.qsum(
+    #     x_t_r[(t, r)] * int(prize) for t in terminal_indices for r, prize in G[t]["prizes"].items()
+    # )
     model.setObjective(prizes, sense=ObjSense.kMaximize)
 
     # Hard Budget Constraint
+    budget = config["budget"]
     capacity_cost = model.qsum(
         c_r[(c, r)] * cost for r in roots_indices for c, cost in enumerate(G[r]["capacity_cost"])
     )
     node_cost = model.qsum(x[i] * G[i]["need_exploration_point"] for i in G.node_indices())
-    model.addConstr(capacity_cost + node_cost <= config["budget"])
+    model.addConstr(capacity_cost + node_cost <= budget, name="budget")
 
     # (Terminal, root) assignment constraints
+
+    # Minimum and Maximum bounds on number of terminals assigned
+    t_count_ub = round(
+        3.98980981766944
+        + 0.552618716162738 * budget
+        + 2.98921916296481e-7 * budget**3
+        - 0.000503850929485882 * budget**2
+    )
+    logger.info(f"*** Setting min/max terminal count cutoff = [{int(t_count_ub * 0.6)}, {t_count_ub}]")
+    model.addConstr(model.qsum(x[t] for t in terminal_indices) >= int(t_count_ub * 0.6))
+    model.addConstr(model.qsum(x[t] for t in terminal_indices) <= t_count_ub)
+
     for r in roots_indices:
         assigned = model.qsum(x_t_r[(t, r)] for t in terminal_indices if (t, r) in x_t_r)
         # Any terminal assigned to root selects root
@@ -220,6 +235,10 @@ def optimize(
 
     print("Creating mip model...")
     model, vars = create_model(G, data["config"], prev_terminals_sets=prev_terminals_sets)
+
+    # Write mip model for debugging
+    # print("Writing mip model...")
+    # model.writeModel(f"B_{data['config']['budget']}_lta_prices_max_lodging_topn_6_nearestn_7_ub_17.mps")
 
     print("Solving mip problem...")
     model = solve(model, data["config"]["solver"], controller)

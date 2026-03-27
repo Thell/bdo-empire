@@ -100,7 +100,7 @@ def setup_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> list[int]:
     return terminal_indices
 
 
-def setup_roots(solver_graph, data):
+def setup_roots(solver_graph: PyDiGraph, data: dict[str, Any]):
     """Populate each root node with ub and capacity_cost using precomputed bounds_costs."""
     logger.info("  setting up root lodging costs from precomputed bounds_costs...")
     root_indices = solver_graph.attrs["root_indices"]
