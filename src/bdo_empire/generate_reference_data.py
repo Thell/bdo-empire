@@ -1,10 +1,10 @@
 # generate_reference_data.py
-from typing import Any
 import hashlib
 import json
+from typing import Any
 
-from bdo_empire.api_exploration_graph import get_clean_exploration_data, get_exploration_graph
 import bdo_empire.data_store as ds
+from bdo_empire.api_exploration_graph import get_clean_exploration_data, get_exploration_graph
 from bdo_empire.generate_value_data import generate_value_data
 
 
@@ -119,7 +119,7 @@ def compute_lodging_bounds_costs(
 
 
 def get_affiliated_town_regions(data: dict | None = None) -> dict:
-    """ """
+    """Generates and returns a dictionary mapping region keys to town keys."""
     if data is None:
         data = {}
         data["exploration"] = ds.read_json("exploration.json")

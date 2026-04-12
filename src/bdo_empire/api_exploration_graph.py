@@ -119,7 +119,7 @@ def get_exploration_graph(config: dict) -> rx.PyGraph | rx.PyDiGraph:
     directed: bool = config.get("exploration_data", {}).get("directed", False)
     edge_weighted: bool = config.get("exploration_data", {}).get("edge_weighted", False)
     if not isinstance(directed, bool) or not isinstance(edge_weighted, bool):
-        raise ValueError("directed and edge_weighted must be booleans")
+        raise TypeError("directed and edge_weighted must be booleans")
 
     data = get_clean_exploration_data(config)
 
@@ -213,7 +213,7 @@ def generate_region_group_neighbors(waypoint_key: int, config: dict):
     for node in exploration_nodes.values():
         if node["region_group_key"] in neighbor_region_groups:
             neighbors.add(node["waypoint_key"])
-    neighbors = sorted(list(neighbors))
+    neighbors = sorted(neighbors)
     return neighbors
 
 
@@ -232,7 +232,7 @@ def get_territory_root_sets(exploration_data: dict, territory_neighbors: dict):
         for n in territory_neighbors[root_territory]:
             territory_root_sets[n].add(node_key)
 
-    territory_root_sets = {k: list(sorted(v)) for k, v in territory_root_sets.items()}
+    territory_root_sets = {k: sorted(v) for k, v in territory_root_sets.items()}
     return territory_root_sets
 
 

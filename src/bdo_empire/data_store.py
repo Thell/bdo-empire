@@ -54,8 +54,9 @@ def write_json(filename: str, data: dict | str) -> None:
 
 
 def request_content(url: str) -> str:
-    import certifi
     import ssl
+
+    import certifi
 
     context = ssl.create_default_context(cafile=certifi.where())
     try:

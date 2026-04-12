@@ -266,6 +266,6 @@ def optimize_worker(region, plantzone, dist, median_workers, data):
         "value": optimized_worker[1]["profit"],
         "worker_data": median_workers[optimized_worker[0]].copy(),
     }
-    result_data["worker_data"]["skills"] = [int(s) for s in optimized_worker[1]["skills"].copy()]  # type: ignore
+    result_data["worker_data"]["skills"] = [int(s) for s in optimized_worker[1]["skills"].copy()]
 
     return (plantzone, region, result_data)

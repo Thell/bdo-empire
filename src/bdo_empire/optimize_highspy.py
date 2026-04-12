@@ -5,7 +5,7 @@ from loguru import logger
 from rustworkx import PyDiGraph
 
 from bdo_empire.api_common import extract_base_empire
-from bdo_empire.solver_highspy import solve, SolverController
+from bdo_empire.solver_highspy import SolverController, solve
 
 SUPER_ROOT = 99999
 

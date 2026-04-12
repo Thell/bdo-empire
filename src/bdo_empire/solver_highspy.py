@@ -1,17 +1,15 @@
 # solver_highspy.py
 
-from dataclasses import dataclass
-from math import inf
-import psutil
 import queue
 import re
-from threading import Event
-from threading import Lock
-from threading import Thread
 import time
+from dataclasses import dataclass
+from math import inf
+from threading import Event, Lock, Thread
 
-from highspy import Highs, ObjSense
 import numpy as np
+import psutil
+from highspy import Highs, ObjSense
 
 TIME_AND_NEWLINE_PATTERN = re.compile(r"(\d+\.\d+s)\n$")
 
@@ -200,7 +198,7 @@ def solve(model: Highs, config: dict, controller: SolverController) -> Highs:
     def cbMIPUserSolutionHandler(e):
         """Update clones to best solution found so far..."""
         clone_id = int(e.user_data)
-        if not incumbent.provided[clone_id] and is_better(
+        if not incumbent.provided[clone_id] and is_better(  # noqa: SIM102
             incumbent.value, e.data_out.objective_function_value
         ):
             # Skip rather than block: the callback will be called again

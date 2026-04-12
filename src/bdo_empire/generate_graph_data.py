@@ -2,9 +2,9 @@
 
 from typing import Any
 
+import rustworkx as rx
 from bidict import bidict
 from loguru import logger
-import rustworkx as rx
 from rustworkx import PyDiGraph
 
 from bdo_empire.api_exploration_graph import get_all_pairs_path_lengths
@@ -17,14 +17,13 @@ def prep_graph_nodes(solver_graph: PyDiGraph, data: dict[str, Any]) -> int | Non
     super_root_index = setup_super_terminals(solver_graph, data)
 
     node_key_by_index = bidict({i: solver_graph[i]["waypoint_key"] for i in solver_graph.node_indices()})
-    solver_graph.attrs = {"node_key_by_index": node_key_by_index}
-
     root_indices = [
         node_key_by_index.inv[t]
         for t in data["affiliated_town_region"].values()
         if data["exploration"][t]["is_worker_npc_town"]
     ]
-    solver_graph.attrs["root_indices"] = root_indices
+    solver_graph.attrs = {"node_key_by_index": node_key_by_index, "root_indices": root_indices}
+
     logger.debug(f"Found {len(root_indices)} root indices:")
     logger.debug(f"(index, waypoint): {[(i, solver_graph[i]['waypoint_key']) for i in root_indices]}")
 
@@ -45,9 +44,7 @@ def setup_super_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> int 
         from bdo_empire.api_rx_pydigraph import inject_super_root
 
         for node in solver_graph.nodes():
-            node["is_super_terminal"] = (
-                True if node["waypoint_key"] in data["force_active_node_ids"] else False
-            )
+            node["is_super_terminal"] = node["waypoint_key"] in data["force_active_node_ids"]
 
         node_key_by_index = bidict({i: solver_graph[i]["waypoint_key"] for i in solver_graph.node_indices()})
         solver_graph.attrs = {"node_key_by_index": node_key_by_index}
@@ -226,21 +223,17 @@ def reduce_bounds(G: PyDiGraph, super_root_index: int | None):
         # and then the minimum of those results, since each ub is equal to the capacity
         # of the root this is a simple all or nothing per root...
         # This essentially cuts out the fringe of the potential transit flow network.
-        active_ubs = set(
-            k
-            for k in node["transit_bounds"].keys()
-            if node["transit_bounds"][k] > 0 and k != super_root_index
-        )
+        active_ubs = {
+            k for k in node["transit_bounds"] if node["transit_bounds"][k] > 0 and k != super_root_index
+        }
         for j in successors:
             if j == super_root_index:
                 continue
             neighbor = G[j]
-            neighbor_ubs = set(
-                k for k in neighbor["transit_bounds"].keys() if neighbor["transit_bounds"][k] > 0
-            )
+            neighbor_ubs = {k for k in neighbor["transit_bounds"] if neighbor["transit_bounds"][k] > 0}
             active_ubs &= neighbor_ubs
 
-        deactivate_ubs = set(k for k in node["transit_bounds"].keys() if k not in active_ubs)
+        deactivate_ubs = {k for k in node["transit_bounds"] if k not in active_ubs}
         ubs_to_deactivate.append(deactivate_ubs)
 
     for i, G_i in enumerate(G.node_indices()):
@@ -333,7 +326,7 @@ def setup_ranked_basin_bottlenecks(G: PyDiGraph, super_root_index: int | None) -
 
         # NOTE: I'm still not sure which is **best** but rank1 benches better on my test incidents
         # for rank 1 only
-        rank1_ts = [t for t in transit_terminals if list(G[t]["prizes"].keys())[0] == r]
+        rank1_ts = [t for t in transit_terminals if next(iter(G[t]["prizes"].keys())) == r]
 
         # for all [:n] ranks (where n is 1 for 2, 2 for 3, ...)
         # rank1_ts = [t for t in transit_terminals if r not in list(G[t]["prizes"].keys())[:1]]
@@ -376,8 +369,8 @@ def setup_ranked_basin_bottlenecks(G: PyDiGraph, super_root_index: int | None) -
 
         # Step g: Cut nodes = transit nodes not in basin_global with a neighbor in basin_global
         cut_nodes = set()
-        for node in sorted(list(transit_nodes - basin_global)):
-            if any([nb in basin_global for nb in G.neighbors(node)]):
+        for node in sorted(transit_nodes - basin_global):
+            if any(nb in basin_global for nb in G.neighbors(node)):
                 cut_nodes.add(node)
         cut_value = len(cut_nodes)
 

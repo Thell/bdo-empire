@@ -2,14 +2,14 @@
 
 from collections import Counter
 
-from highspy import Highs
 import rustworkx as rx
+from highspy import Highs
 from rustworkx import PyDiGraph
 from tabulate import tabulate
 
+import bdo_empire.data_store as ds
 from bdo_empire.api_common import CALPHEON_KEY, SUPER_ROOT, extract_base_empire
 from bdo_empire.api_rx_pydigraph import subgraph_stable
-import bdo_empire.data_store as ds
 
 
 def generate_workerman_json(workers, data, lodging):
@@ -56,16 +56,12 @@ def generate_graph(G: PyDiGraph, model: Highs, vars: dict):
     terminal_sets = {}
     key_list = list(vars["x_t_r"].keys())
     for i, t_var in enumerate(vars["x_t_r"].values()):
-        if int(round(model.variableValue(t_var))) == 1:  # type: ignore
+        if round(model.variableValue(t_var)) == 1:
             terminal, root = key_list[i]
             terminal_sets[terminal] = root
 
     # Filter non-used nodes from the solution nodes using all terminal -> root paths.
-    active_graph_indices = [
-        i
-        for i, x_var in vars["x"].items()
-        if int(round(model.variableValue(x_var))) == 1  # type: ignore
-    ]
+    active_graph_indices = [i for i, x_var in vars["x"].items() if round(model.variableValue(x_var)) == 1]
     subG = subgraph_stable(active_graph_indices, G)
     used_active_nodes = set()
     for terminal, root in terminal_sets.items():
@@ -191,7 +187,7 @@ def print_summary(
     capacity_costs = {r: G[r]["capacity_cost"][c] for r, c in capacity_used.items()}
 
     table_rows = []
-    for root in capacity_used.keys():
+    for root in capacity_used:
         root_region_key = G[root]["region_key"]
         warehouse_name = region_strings.get(root_region_key, root_region_key)
 
@@ -226,7 +222,7 @@ def print_summary(
     waypoints = {
         i: G[i]["need_exploration_point"]
         for i in G.node_indices()
-        if i not in terminal_sets.keys() and G[i]["need_exploration_point"] > 0
+        if i not in terminal_sets and G[i]["need_exploration_point"] > 0
     }
 
     counts: dict = {
@@ -235,14 +231,14 @@ def print_summary(
     }
 
     total_capacity_cost = sum(capacity_costs.values())
-    total_terminal_cost = sum([G[t]["need_exploration_point"] for t in terminal_sets.keys()])
+    total_terminal_cost = sum(G[t]["need_exploration_point"] for t in terminal_sets)
     costs = {
         "lodgings": total_capacity_cost,
         "origins": total_terminal_cost,
         "waypoints": sum(waypoints.values()),
     }
 
-    total_terminal_value = sum([G[t]["prizes"][r] for t, r in terminal_sets.items()])
+    total_terminal_value = sum(G[t]["prizes"][r] for t, r in terminal_sets.items())
 
     if data["base_empire"] is not None:
         print("\nExtension to base empire:\n")

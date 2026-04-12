@@ -1,10 +1,9 @@
 # api_rx_pydigraph.py
 
-from loguru import logger
 import rustworkx as rx
+from loguru import logger
 
 import bdo_empire.api_exploration_graph as exploration_api
-
 from bdo_empire.api_common import SUPER_ROOT
 
 

@@ -1,26 +1,24 @@
 # main.py
 
 import ast
-from enum import Enum
 import json
+from enum import Enum
 from math import inf
 from pathlib import Path
 from threading import Thread
-from tkinter import ACTIVE, DISABLED, END, NORMAL, filedialog, Listbox
+from tkinter import ACTIVE, DISABLED, END, NORMAL, Listbox, filedialog
 
 import customtkinter as ctk
 from CTkToolTip import CTkToolTip as ctktt
 from psutil import cpu_count
 
-from bdo_empire.api_common import set_logger
 import bdo_empire.data_store as ds
+from bdo_empire.api_common import set_logger
 from bdo_empire.generate_graph_data import generate_graph_data
-from bdo_empire.generate_reference_data import generate_reference_data
-from bdo_empire.generate_reference_data import get_region_lodging_bounds_costs
+from bdo_empire.generate_reference_data import generate_reference_data, get_region_lodging_bounds_costs
 from bdo_empire.generate_workerman_data import generate_workerman_data
 from bdo_empire.optimize_highspy import optimize as optimize_highspy
 from bdo_empire.solver_highspy import SolverController
-
 
 optimize_config = {
     "name": "Empire",
@@ -33,7 +31,7 @@ optimize_config = {
 
 
 solver_config = {
-    "num_threads": max(1, cpu_count(logical=False) - 1),  # type: ignore
+    "num_threads": max(1, cpu_count(logical=False) - 1),
     "mip_rel_gap": 1e-4,
     "mip_feasibility_tolerance": 1e-4,
     "primal_feasibility_tolerance": 1e-4,
@@ -107,7 +105,7 @@ class WidgetState(Enum):
 
 
 def get_version():
-    from importlib.metadata import version, PackageNotFoundError
+    from importlib.metadata import PackageNotFoundError, version
 
     try:
         return version("bdo-empire")
@@ -280,7 +278,7 @@ class EmpireOptimizerApp(ctk.CTk):
                 )
                 for node_data in exploration_data.values()
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Failed to load node names: {e}")
             return {}
 
@@ -413,7 +411,7 @@ class EmpireOptimizerApp(ctk.CTk):
                 self.add_node_to_selected_nodes(key)
 
             self.grinding_status.configure(text="Imported")
-        except Exception:
+        except Exception:  # noqa: BLE001
             self.grinding_status.configure(text="Import Failed")
 
     def export_grinding(self):
@@ -424,7 +422,7 @@ class EmpireOptimizerApp(ctk.CTk):
             with open(path, "w", encoding="utf-8") as f:
                 json.dump({"keys": self.grinding_entries["keys"]}, f, indent=2)
             self.grinding_status.configure(text="Exported")
-        except Exception:
+        except Exception:  # noqa: BLE001
             self.grinding_status.configure(text="Export Failed")
 
     def setup_lodging(self):
@@ -485,8 +483,8 @@ class EmpireOptimizerApp(ctk.CTk):
             return handler
 
         self.lodging_entries = {}
-        row = 1
-        for town, values in lodging_specifications.items():
+
+        for row, (town, values) in enumerate(lodging_specifications.items()):
             bonus = values["bonus"]
             reserved = values["reserved"]
             prepaid = values["prepaid"]
@@ -529,7 +527,6 @@ class EmpireOptimizerApp(ctk.CTk):
             }
             # Force label refresh for re-open
             self.validate_lodging(bonus_var, status_label, prepaid_var, town)
-            row += 1
 
         # Force label refresh for re-open
         self.recompute_total_prepaid_cp()
@@ -647,7 +644,7 @@ class EmpireOptimizerApp(ctk.CTk):
                 cost_label.set("0")
                 label_widget.configure(text="Optional", text_color="white")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print("Exception in validate_lodging:", e)
             label_widget.configure(text="Invalid", text_color="red")
             cost_label.set("—")
@@ -827,8 +824,8 @@ class EmpireOptimizerApp(ctk.CTk):
         config_window.grab_set()
 
         self.config_entries = {}
-        row = 0
-        for setting, value in solver_config.items():
+
+        for row, (setting, value) in enumerate(solver_config.items()):
             label = ctk.CTkLabel(config_window, text=setting)
             label.grid(row=row, column=0, padx=10, pady=5)
 
@@ -837,7 +834,7 @@ class EmpireOptimizerApp(ctk.CTk):
             ctktt(entry, message=solver_config_descriptions[setting])
             entry.grid(row=row, column=1, padx=10, pady=5)
             self.config_entries[setting] = entry_var
-            row += 1
+
         config_window.protocol("WM_DELETE_WINDOW", lambda: self.save_config_data(config_window))
 
     def save_config_data(self, config_window):

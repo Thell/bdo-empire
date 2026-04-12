@@ -1,10 +1,10 @@
 # api_common.py
 
-from typing import TypedDict
 import sys
+from typing import TypedDict
 
-from loguru import logger
 import rustworkx as rx
+from loguru import logger
 from rustworkx import PyDiGraph
 
 import bdo_empire.data_store as ds
