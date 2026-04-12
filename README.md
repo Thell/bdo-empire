@@ -7,7 +7,7 @@ optimum allocation of the points to maximize a Worker Node Empire's value.
 
 It
   - generates a json file to import into [Workerman][workerman]
-  - uses workers of level 40.
+  - uses workers of level 40 with average stats.
   - uses workers with optimum skills learned.
   - assumes all drops are sent to storage with zero cost (Calpheon).
 
