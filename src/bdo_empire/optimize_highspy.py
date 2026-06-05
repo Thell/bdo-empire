@@ -220,7 +220,7 @@ def optimize(
     """Create and solve the MIP problem for the given graph and configuration."""
     G = data["solver_graph"]
     assert isinstance(G, PyDiGraph)
-    num_threads = data["config"]["solver"]["num_threads"]
+    num_processes = data["config"]["solver"]["num_processes"]
 
     if data["base_empire"] is not None:
         prev_terminals_sets = extract_base_empire(G, data["base_empire"])
@@ -230,7 +230,7 @@ def optimize(
     print(
         f"\nSolving:  graph with {G.num_nodes()} nodes and {G.num_edges()} arcs"
         f"\n  Using:  budget of {data['config']['budget']}"
-        f"\n   With:  {num_threads} processes."
+        f"\n   With:  {num_processes} processes."
     )
 
     print("Creating mip model...")
@@ -241,6 +241,6 @@ def optimize(
     # model.writeModel(f"B_{data['config']['budget']}_lta_prices_max_lodging_topn_6_nearestn_7_ub_17.mps")
 
     print("Solving mip problem...")
-    model = solve(model, data["config"]["solver"], controller)
+    model = solve(model, data["config"], controller)
 
     return model, vars

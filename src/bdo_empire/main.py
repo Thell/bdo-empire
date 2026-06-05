@@ -31,7 +31,7 @@ optimize_config = {
 
 
 solver_config = {
-    "num_threads": max(1, cpu_count(logical=False) - 1),
+    "num_processes": max(1, cpu_count(logical=False) - 1),  # concurrent HiGHs processes
     "mip_rel_gap": 1e-4,
     "mip_feasibility_tolerance": 1e-4,
     "primal_feasibility_tolerance": 1e-4,
@@ -39,11 +39,12 @@ solver_config = {
     "time_limit": inf,
     "mip_improvement_timeout": inf,
     "mip_heuristic_run_root_reduced_cost": True,
-    "threads": 1,
+    "threads": 1,  # HiGHs internal parallelism
+    "log_to_console": False,  # HiGHs logger callback is distinct from console logging.
 }
 
 solver_config_descriptions = {
-    "num_threads": "Number of threads to use.",
+    "num_processes": "Number of processes to use.",
     "mip_rel_gap": "Relative gap tolerance between MIP objective and upper bound.",
     "mip_feasibility_tolerance": "Tolerance for MIP feasibility.",
     "primal_feasibility_tolerance": "Tolerance for primal feasibility.",
@@ -838,7 +839,7 @@ class EmpireOptimizerApp(ctk.CTk):
         config_window.protocol("WM_DELETE_WINDOW", lambda: self.save_config_data(config_window))
 
     def save_config_data(self, config_window):
-        int_fields = ["num_threads", "random_seed"]
+        int_fields = ["num_processes", "random_seed"]
         for setting, var in self.config_entries.items():
             value = var.get()
             solver_config[setting] = (
