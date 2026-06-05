@@ -83,6 +83,8 @@ def setup_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> list[int]:
             root_index = node_key_by_index.inv[root_key]
             values[root_index] = value
         node["prizes"] = values
+        if not values:
+            logger.warning(f"⚠️ No plantzone drop data for: {node['waypoint_key']}")
 
     town_to_region_map = {int(town): region for region, town in data["affiliated_town_region"].items()}
     for terminal_index in sorted(terminal_indices):
@@ -326,7 +328,7 @@ def setup_ranked_basin_bottlenecks(G: PyDiGraph, super_root_index: int | None) -
 
         # NOTE: I'm still not sure which is **best** but rank1 benches better on my test incidents
         # for rank 1 only
-        rank1_ts = [t for t in transit_terminals if next(iter(G[t]["prizes"].keys())) == r]
+        rank1_ts = [t for t in transit_terminals if G[t]["prizes"] and next(iter(G[t]["prizes"].keys())) == r]
 
         # for all [:n] ranks (where n is 1 for 2, 2 for 3, ...)
         # rank1_ts = [t for t in transit_terminals if r not in list(G[t]["prizes"].keys())[:1]]

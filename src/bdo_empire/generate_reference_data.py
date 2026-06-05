@@ -3,9 +3,47 @@ import hashlib
 import json
 from typing import Any
 
+from loguru import logger
+
 import bdo_empire.data_store as ds
 from bdo_empire.api_exploration_graph import get_clean_exploration_data, get_exploration_graph
 from bdo_empire.generate_value_data import generate_value_data
+
+
+def update_workerman_data() -> None:
+    """Checks workerman repository for changes to manually updated files."""
+    sha_filename = "workerman_hash.txt"
+    filenames = ["plantzone_drops.json", "skills.json"]
+
+    current_sha = ds.read_text(sha_filename) if ds.is_file(sha_filename) else None
+    if current_sha is None:
+        logger.info("  no previous workerman repo SHA found. Downloading...")
+
+    all_files_exist = all(ds.is_file(f) for f in filenames)
+    if not all_files_exist:
+        logger.error("  some workerman files are missing. Downloading...")
+
+    latest_repo_sha = ds.download_sha()
+    if latest_repo_sha == current_sha and all_files_exist:
+        logger.info("    ...re-using existing workerman data (SHA matches).")
+        return
+
+    all_updates_successful = True
+    for filename in filenames:
+        success = ds.download_json(filename)
+        if success:
+            logger.info(f"    ...processed {filename} successfully")
+        else:
+            logger.error(f"    ...failed to update {filename}")
+            all_updates_successful = False
+
+    if all_updates_successful and latest_repo_sha:
+        ds.path().joinpath(sha_filename).write_text(latest_repo_sha, encoding="utf-8")
+        logger.info("    ...workerman data repository sync complete.")
+    else:
+        logger.warning(
+            "    ...workerman data synchronization incomplete. Commit hash was NOT updated, will re-attempt on next restart."
+        )
 
 
 def set_data_file_values(data: dict) -> None:
@@ -264,6 +302,10 @@ def generate_reference_data(
     )
 
     data["affiliated_town_region"] = get_affiliated_town_regions(data)
+
+    # 'plantzone_drops.json' and 'skills.json' data are manually updated workerman data files
+    # so we need to ensure we have the latest versions of each.
+    update_workerman_data()
 
     set_data_plant_values(prices, modifiers, data)
     set_lodging_bounds_costs(lodging, data)

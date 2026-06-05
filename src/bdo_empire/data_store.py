@@ -4,6 +4,10 @@ import importlib.resources
 import json
 from pathlib import Path
 from urllib import request
+from urllib.error import URLError
+
+from loguru import logger
+from urllib3.exceptions import HTTPError
 
 
 def path() -> Path:
@@ -53,7 +57,7 @@ def write_json(filename: str, data: dict | str) -> None:
         json.dump(data, data_file, indent=4)
 
 
-def request_content(url: str) -> str:
+def request_content(url: str) -> str | None:
     import ssl
 
     import certifi
@@ -61,26 +65,53 @@ def request_content(url: str) -> str:
     context = ssl.create_default_context(cafile=certifi.where())
     try:
         with request.urlopen(url, context=context) as response:
-            content = response.read().decode("utf-8")
-    except Exception as e:
-        print(f"Error fetching content: {e}")
-        raise
-    return content
+            return response.read().decode("utf-8")
+    except (HTTPError, URLError) as e:
+        logger.warning(f"Network error fetching URL {url}: {e}")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Unexpected error fetching content from URL {url}: {e}")
+    return None
 
 
-def download_json(filename: str) -> None:
-    url = "https://raw.githubusercontent.com/shrddr/workermanjs/refs/heads/main/data"
+def download_json(filename: str) -> bool:
+    logger.info(f"  fetching content for {filename}")
+
+    base_url = "https://raw.githubusercontent.com/shrddr/workermanjs/refs/heads/main/data"
     if filename in ["plantzone_drops.json", "skills.json"]:
-        url = f"{url}/manual/{filename}"
+        url = f"{base_url}/manual/{filename}"
     else:
-        url = f"{url}/{filename}"
-    content = request_content(url)
-    write_json(filename, content)
+        url = f"{base_url}/{filename}"
+
+    new_content = request_content(url)
+    if new_content is None:
+        logger.warning(f"    skipping update for {filename} due to fetch failure.")
+        return False
+
+    try:
+        json.loads(new_content)
+    except json.JSONDecodeError:
+        logger.warning(f"    fetched content for {filename} is not valid JSON. Write aborted. Continuing...")
+        return False
+
+    if is_file(filename):
+        existing_content = read_text(filename)
+        if existing_content == new_content:
+            logger.info(f"    skipping update for {filename} due to no change.")
+            return True
+
+    # 5. Log the update and save
+    logger.info(f"    updating local file: {filename}")
+    write_json(filename, new_content)
+
+    return True
 
 
 def download_sha() -> str:
     url = "https://api.github.com/repos/shrddr/workermanjs/branches/main"
     content = request_content(url)
+    if content is None:
+        logger.warning("  Failed to fetch commit hash... continuing.")
+        return ""
     json_data = json.loads(content)
     return json_data["commit"]["sha"]
 
