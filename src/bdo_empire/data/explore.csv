@@ -76,6 +76,10 @@ Param0,String
 203,Grapes
 204,Olives
 205,Specialties
+206,Lumbering
+207,Mining
+208,Mining
+209,Lumbering
 301,Heidel
 302,Glish
 303,Northern Guard Camp
@@ -600,7 +604,7 @@ Param0,String
 1452,Margoria (Vell's Realm)
 1501,Gathering
 1502,Lumbering
-1503,Mining
+1503,UnKnown
 1504,Lumbering
 1505,Gathering
 1506,Gathering
@@ -608,7 +612,7 @@ Param0,String
 1508,Mining
 1509,Gathering
 1510,Mining
-1512,Lumbering
+1512,Gathering
 1513,Mining
 1514,Gathering
 1515,Gathering
@@ -738,8 +742,8 @@ Param0,String
 1672,Farming
 1673,Farming
 1674,Farming
-1675,Gathering
-1676,Gathering
+1675,Lumbering
+1676,Lumbering
 1677,Gathering
 1678,Gathering
 1679,Mining
@@ -1020,3 +1024,32 @@ Param0,String
 2052,Olvia Academy
 2053,Frozen Halo
 2054,Gathering
+2055,UnKnown
+2056,UnKnown
+2058,Excavation
+2059,Excavation
+2060,Lumbering
+2061,Lumbering
+2062,Excavation
+2063,Excavation
+2064,Excavation
+2065,Mining
+2066,Mining
+2067,Chicken Meat Production
+2068,Lumbering
+2069,Mining
+2070,Mining
+2071,Excavation
+2072,Excavation
+2073,Excavation
+2074,Excavation
+2075,Mining
+2076,Mining
+2077,Mining
+2078,Lumbering
+2079,Excavation
+2080,Excavation
+2081,Mining
+2082,Mining
+2083,Lumbering
+2084,Lumbering
