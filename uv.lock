@@ -4,7 +4,7 @@ requires-python = ">=3.12"
 
 [[package]]
 name = "bdo-empire"
-version = "0.5.6"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "bidict" },
@@ -17,6 +17,7 @@ dependencies = [
     { name = "psutil" },
     { name = "rustworkx" },
     { name = "tabulate" },
+    { name = "urllib3" },
 ]
 
 [package.dev-dependencies]
@@ -36,6 +37,7 @@ requires-dist = [
     { name = "psutil", specifier = ">=7.2.2" },
     { name = "rustworkx", specifier = ">=0.17.1" },
     { name = "tabulate", specifier = ">=0.10.0" },
+    { name = "urllib3", specifier = ">=2.3.0" },
 ]
 
 [package.metadata.requires-dev]
