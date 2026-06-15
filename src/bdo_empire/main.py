@@ -127,13 +127,13 @@ class EmpireOptimizerApp(ctk.CTk):
         self.prices_state = WidgetState.Required
         self.lodging_state = WidgetState.Optional
         self.modifiers_state = WidgetState.Optional
-        self.grinding_state = WidgetState.Optional
+        self.forced_taken_state = WidgetState.Optional
         self.outpath_state = WidgetState.Required
         self.optimize_state = WidgetState.Waiting
         self.baseempire_state = WidgetState.Optional
 
         self.config_entries = {}
-        self.grinding_entries = {}
+        self.forced_taken_entries = {}
         self.lodging_entries = {}
         self.node_lookup = self.load_node_name_lookup()
         self.all_nodes = sorted(self.node_lookup.items(), key=lambda x: x[1])
@@ -176,11 +176,13 @@ class EmpireOptimizerApp(ctk.CTk):
         ctktt(self.lodging_button, message="Setup pearl shop bonus lodging and workshop reserved lodging.")
 
         row += 1
-        self.grinding_button = ctk.CTkButton(self, text="Setup Forced Nodes", command=self.setup_grinding)
-        self.grinding_button.grid(row=row, column=1, padx=0, pady=10)
-        self.grinding_status = ctk.CTkLabel(self, text=self.grinding_state.name)
-        self.grinding_status.grid(row=row, column=3, padx=0, pady=10)
-        ctktt(self.grinding_button, message="Setup grinding/trade nodes.")
+        self.forced_taken_button = ctk.CTkButton(
+            self, text="Setup Forced Nodes", command=self.setup_forced_taken
+        )
+        self.forced_taken_button.grid(row=row, column=1, padx=0, pady=10)
+        self.forced_taken_status = ctk.CTkLabel(self, text=self.forced_taken_state.name)
+        self.forced_taken_status.grid(row=row, column=3, padx=0, pady=10)
+        ctktt(self.forced_taken_button, message="Setup forced_taken/trade nodes.")
 
         row += 1
         self.modifiers_label = ctk.CTkLabel(self, text="Modifiers")
@@ -283,47 +285,47 @@ class EmpireOptimizerApp(ctk.CTk):
             print(f"Failed to load node names: {e}")
             return {}
 
-    def setup_grinding(self):
-        grinding_window = ctk.CTkToplevel(self)
-        grinding_window.title("Setup Grinding Nodes")
-        grinding_window.geometry("800x500")
-        grinding_window.update()
-        grinding_window.grab_set()
+    def setup_forced_taken(self):
+        forced_taken_window = ctk.CTkToplevel(self)
+        forced_taken_window.title("Setup forced_taken Nodes")
+        forced_taken_window.geometry("800x500")
+        forced_taken_window.update()
+        forced_taken_window.grab_set()
 
         self.search_var = ctk.StringVar()
-        self.grinding_entries["keys"] = self.grinding_entries.get("keys", [])
+        self.forced_taken_entries["keys"] = self.forced_taken_entries.get("keys", [])
 
         # LEFT SIDE
-        left_frame = ctk.CTkFrame(grinding_window)
+        left_frame = ctk.CTkFrame(forced_taken_window)
         left_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
 
         ctk.CTkLabel(left_frame, text="Search Nodes").pack(anchor="w", padx=5)
         search_box = ctk.CTkEntry(left_frame, textvariable=self.search_var)
         search_box.pack(fill="x", padx=5, pady=5)
-        search_box.bind("<KeyRelease>", self.update_grinding_filter)
+        search_box.bind("<KeyRelease>", self.update_forced_taken_filter)
 
         self.available_listbox = self.themed_listbox(left_frame)
         self.available_listbox.pack(fill="both", expand=True, padx=5, pady=5)
         self.available_listbox.bind("<Double-Button-1>", self.add_selected_node)
 
         # RIGHT SIDE
-        right_frame = ctk.CTkFrame(grinding_window)
+        right_frame = ctk.CTkFrame(forced_taken_window)
         right_frame.pack(side="right", fill="y", padx=10, pady=10)
 
-        ctk.CTkLabel(right_frame, text="Selected Grinding Nodes").pack(anchor="w", padx=5)
+        ctk.CTkLabel(right_frame, text="Selected forced_taken Nodes").pack(anchor="w", padx=5)
         self.selected_listbox = self.themed_listbox(right_frame)
         self.selected_listbox.pack(fill="both", expand=True, padx=5, pady=(5, 0))
         self.selected_listbox.bind("<Double-Button-1>", self.remove_selected_node)
 
         btn_frame = ctk.CTkFrame(right_frame)
         btn_frame.pack(pady=10)
-        ctk.CTkButton(btn_frame, text="Import", command=self.import_grinding).pack(side="left", padx=5)
-        ctk.CTkButton(btn_frame, text="Export", command=self.export_grinding).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Import", command=self.import_forced_taken).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Export", command=self.export_forced_taken).pack(side="left", padx=5)
 
-        self.update_grinding_filter()
+        self.update_forced_taken_filter()
         self.refresh_selected_nodes()
 
-    def select_grinding_node(self, _event=None):
+    def select_forced_taken_node(self, _event=None):
         selection = self.available_listbox.curselection()
         if not selection:
             return
@@ -331,11 +333,11 @@ class EmpireOptimizerApp(ctk.CTk):
         index = selection[0]
         item_text = self.available_listbox.get(index)
         key = int(item_text.split("|")[-1].strip())
-        self.grinding_entries["keys"].append(key)
+        self.forced_taken_entries["keys"].append(key)
         self.available_listbox.delete(index)
         self.selected_listbox.insert(END, item_text)
 
-    def deselect_grinding_node(self, _event=None):
+    def deselect_forced_taken_node(self, _event=None):
         selection = self.selected_listbox.curselection()
         if not selection:
             return
@@ -343,16 +345,18 @@ class EmpireOptimizerApp(ctk.CTk):
         index = selection[0]
         item_text = self.selected_listbox.get(index)
         key = int(item_text.split("|")[-1].strip())
-        self.grinding_entries["keys"].remove(key)
+        self.forced_taken_entries["keys"].remove(key)
         self.selected_listbox.delete(index)
         self.available_listbox.insert(END, item_text)
 
-    def update_grinding_filter(self, _event=None):
+    def update_forced_taken_filter(self, _event=None):
         search = self.search_var.get().lower()
         self.available_listbox.delete(0, END)
 
         for key, name in self.all_nodes:
-            if key not in self.grinding_entries["keys"] and (search in name.lower() or search in str(key)):
+            if key not in self.forced_taken_entries["keys"] and (
+                search in name.lower() or search in str(key)
+            ):
                 self.available_listbox.insert(END, f"{name} | {key}")
 
     def add_node_to_selected_nodes(self, key: int):
@@ -360,10 +364,10 @@ class EmpireOptimizerApp(ctk.CTk):
         if key not in key_to_label:
             return
 
-        if key not in self.grinding_entries["keys"]:
-            self.grinding_entries["keys"].append(key)
+        if key not in self.forced_taken_entries["keys"]:
+            self.forced_taken_entries["keys"].append(key)
 
-        self.grinding_entries["keys"].sort(key=lambda k: key_to_label[k])
+        self.forced_taken_entries["keys"].sort(key=lambda k: key_to_label[k])
         self.refresh_selected_nodes()
 
     def add_selected_node(self, _event):
@@ -376,28 +380,28 @@ class EmpireOptimizerApp(ctk.CTk):
         selection = self.selected_listbox.get(ACTIVE)
         if "|" in selection:
             key = int(selection.split("|")[-1].strip())
-            if key in self.grinding_entries["keys"]:
-                self.grinding_entries["keys"].remove(key)
-                self.update_grinding_filter()
+            if key in self.forced_taken_entries["keys"]:
+                self.forced_taken_entries["keys"].remove(key)
+                self.update_forced_taken_filter()
                 self.refresh_selected_nodes()
 
     def refresh_selected_nodes(self):
         self.selected_listbox.delete(0, END)
-        for key in self.grinding_entries["keys"]:
+        for key in self.forced_taken_entries["keys"]:
             name = self.node_lookup.get(key, "Unknown")
             self.selected_listbox.insert(END, f"{name} | {key}")
 
-        if self.grinding_entries["keys"]:
-            self.grinding_state = WidgetState.Ready
-            self.grinding_status.configure(text=self.grinding_state.name, text_color="green")
+        if self.forced_taken_entries["keys"]:
+            self.forced_taken_state = WidgetState.Ready
+            self.forced_taken_status.configure(text=self.forced_taken_state.name, text_color="green")
         else:
-            self.grinding_state = WidgetState.Optional
+            self.forced_taken_state = WidgetState.Optional
             default_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
-            self.grinding_status.configure(text=self.grinding_state.name, text_color=default_color)
+            self.forced_taken_status.configure(text=self.forced_taken_state.name, text_color=default_color)
 
-        self.grinding_status.update()
+        self.forced_taken_status.update()
 
-    def import_grinding(self):
+    def import_forced_taken(self):
         path = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json")])
         if not path:
             return
@@ -405,26 +409,26 @@ class EmpireOptimizerApp(ctk.CTk):
             with open(path, "r", encoding="utf-8") as f:
                 keys = json.load(f).get("keys", [])
 
-            self.grinding_entries["keys"].clear()
+            self.forced_taken_entries["keys"].clear()
             self.selected_listbox.delete(0, END)
 
             for key in keys:
                 self.add_node_to_selected_nodes(key)
 
-            self.grinding_status.configure(text="Imported")
+            self.forced_taken_status.configure(text="Imported")
         except Exception:  # noqa: BLE001
-            self.grinding_status.configure(text="Import Failed")
+            self.forced_taken_status.configure(text="Import Failed")
 
-    def export_grinding(self):
+    def export_forced_taken(self):
         path = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON Files", "*.json")])
         if not path:
             return
         try:
             with open(path, "w", encoding="utf-8") as f:
-                json.dump({"keys": self.grinding_entries["keys"]}, f, indent=2)
-            self.grinding_status.configure(text="Exported")
+                json.dump({"keys": self.forced_taken_entries["keys"]}, f, indent=2)
+            self.forced_taken_status.configure(text="Exported")
         except Exception:  # noqa: BLE001
-            self.grinding_status.configure(text="Export Failed")
+            self.forced_taken_status.configure(text="Export Failed")
 
     def setup_lodging(self):
         lodging_window = ctk.CTkToplevel(self)
@@ -599,8 +603,8 @@ class EmpireOptimizerApp(ctk.CTk):
             return
 
         try:
-            bonus = int(self.lodging_entries[town]["bonus"].get())
-            reserved = int(self.lodging_entries[town]["reserved"].get())
+            bonus = int(self.lodging_entries[town]["bonus"].get())  # ty:ignore[unresolved-attribute]
+            reserved = int(self.lodging_entries[town]["reserved"].get())  # ty:ignore[unresolved-attribute]
         except ValueError as e:
             print("ValueError:", e)
             label_widget.configure(text="Invalid", text_color="red")
@@ -655,9 +659,9 @@ class EmpireOptimizerApp(ctk.CTk):
         # Defensive sync from UI in case of stray edits or skipped validations
         for town, lodging_vars in self.lodging_entries.items():
             try:
-                bonus_value = int(lodging_vars["bonus"].get())
-                reserved_value = int(lodging_vars["reserved"].get())
-                prepaid_value = int(lodging_vars["prepaid"].get())  # now stored as text variable
+                bonus_value = int(lodging_vars["bonus"].get())  # ty:ignore[unresolved-attribute]
+                reserved_value = int(lodging_vars["reserved"].get())  # ty:ignore[unresolved-attribute]
+                prepaid_value = int(lodging_vars["prepaid"].get())  # now stored as text variable  # ty:ignore[unresolved-attribute]
 
                 lodging_specifications[town].update({
                     "bonus": bonus_value,
@@ -687,9 +691,9 @@ class EmpireOptimizerApp(ctk.CTk):
                 lodging_specifications.update(loaded_data)
                 for town, value in loaded_data.items():
                     if town in self.lodging_entries:
-                        self.lodging_entries[town]["bonus"].set(value["bonus"])
-                        self.lodging_entries[town]["reserved"].set(value["reserved"])
-                        self.lodging_entries[town]["prepaid"].set(str(value["prepaid"]))
+                        self.lodging_entries[town]["bonus"].set(value["bonus"])  # ty:ignore[unresolved-attribute]
+                        self.lodging_entries[town]["reserved"].set(value["reserved"])  # ty:ignore[unresolved-attribute]
+                        self.lodging_entries[town]["prepaid"].set(str(value["prepaid"]))  # ty:ignore[unresolved-attribute]
                         self.lodging_entries[town]["bonus_ub"] = value["bonus_ub"]
                         self.validate_lodging(
                             self.lodging_entries[town]["bonus"],
@@ -708,9 +712,9 @@ class EmpireOptimizerApp(ctk.CTk):
             export_data = {}
             for town, values in self.lodging_entries.items():
                 try:
-                    bonus = int(values["bonus"].get())
-                    reserved = int(values["reserved"].get())
-                    prepaid = int(values["prepaid"].get())
+                    bonus = int(values["bonus"].get())  # ty:ignore[unresolved-attribute]
+                    reserved = int(values["reserved"].get())  # ty:ignore[unresolved-attribute]
+                    prepaid = int(values["prepaid"].get())  # ty:ignore[unresolved-attribute]
                     bonus_ub = values["bonus_ub"]
                     export_data[town] = {
                         "bonus": bonus,
@@ -869,8 +873,8 @@ class EmpireOptimizerApp(ctk.CTk):
             data = json.loads(Path(self.modifiers_entry.get()).read_text(encoding="utf-8"))
             modifiers = data.get("regionResources") or data.get("regionModifiers", {})
 
-        grindTakenList = self.grinding_entries.get("keys", [])
-        data = generate_reference_data(config, prices, modifiers, lodging_specifications, grindTakenList)
+        forcedTakenList = self.forced_taken_entries.get("keys", [])
+        data = generate_reference_data(config, prices, modifiers, lodging_specifications, forcedTakenList)
         data = generate_graph_data(data)
         if self.baseempire_entry.get():
             data["base_empire"] = json.loads(Path(self.baseempire_entry.get()).read_text(encoding="utf-8"))
