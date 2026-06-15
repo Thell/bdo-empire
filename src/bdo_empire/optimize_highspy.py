@@ -4,7 +4,7 @@ from highspy import Highs, ObjSense
 from loguru import logger
 from rustworkx import PyDiGraph
 
-from bdo_empire.api_common import extract_base_empire
+from bdo_empire.api_common import ANCADO_INNER_HARBOR_KEY, extract_base_empire
 from bdo_empire.solver_highspy import SolverController, solve
 
 SUPER_ROOT = 99999
@@ -210,7 +210,24 @@ def create_model(
                 # Flow at intermediate node
                 model.addConstr(out_flow - in_flow == 0)
 
-    return model, {"x": x, "x_t_r": x_t_r, "c_r": c_r, "f_r": f_r}
+    # Ancado Inner Harbor Special Case Handling.
+    # If selected for any reason (including farm fences), it must be connected to a near town.
+    # There are three connection paths to select from...
+    ancado_node_id = G.attrs["node_key_by_index"].inv[ANCADO_INNER_HARBOR_KEY]
+
+    connect_sets_wp = [[1321, 1327, 1328, 1329, 1376], [1321, 1327, 1328, 1329, 1330, 1375], [1339]]
+    connect_sets_indices = [
+        [G.attrs["node_key_by_index"].inv[i] for i in connect_set] for connect_set in connect_sets_wp
+    ]
+
+    connect_vars = []
+    for i, connect_set in enumerate(connect_sets_indices):
+        connect_var = model.addBinary(name=f"x_ancado_connect_{i}")
+        connect_vars.append(connect_var)
+        model.addConstr(model.qsum([x[i] for i in connect_set]) >= len(connect_set) * connect_var)
+    # If Ancado capacity 0 is not selected, then at least one connection path must be selected.
+    model.addConstr(model.qsum(connect_vars) >= 1 - c_r[(0, ancado_node_id)])
+
 
 
 def optimize(
