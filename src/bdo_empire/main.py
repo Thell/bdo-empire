@@ -485,7 +485,7 @@ class EmpireOptimizerApp(ctk.CTk):
 
         self.lodging_entries = {}
 
-        for row, (town, values) in enumerate(lodging_specifications.items()):
+        for row, (town, values) in enumerate(lodging_specifications.items(), start=1):
             bonus = values["bonus"]
             reserved = values["reserved"]
             prepaid = values["prepaid"]
