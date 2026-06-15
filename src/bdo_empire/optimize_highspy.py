@@ -112,7 +112,9 @@ def create_model(
     )
     logger.info(f"*** Setting min/max terminal count cutoff = [{int(t_count_ub * 0.6)}, {t_count_ub}]")
     model.addConstr(model.qsum(x[t] for t in terminal_indices) >= int(t_count_ub * 0.6))
-    model.addConstr(model.qsum(x[t] for t in terminal_indices) <= t_count_ub)
+
+    # TODO: Recalculate upper bounds post 06/04/26 CP reduction patch with max p2w lodging.
+    # model.addConstr(model.qsum(x[t] for t in terminal_indices) <= t_count_ub)
 
     for r in roots_indices:
         assigned = model.qsum(x_t_r[(t, r)] for t in terminal_indices if (t, r) in x_t_r)
