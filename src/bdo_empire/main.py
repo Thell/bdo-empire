@@ -272,6 +272,7 @@ class EmpireOptimizerApp(ctk.CTk):
             self.validate_modifiers(file_path)
 
     def load_node_name_lookup(self):
+        import bdo_empire.data_store as ds
         try:
             explore_name_map = ds.read_strings_csv("explore.csv")
             exploration_data = ds.read_json("exploration.json")
