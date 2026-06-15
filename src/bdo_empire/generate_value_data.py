@@ -174,8 +174,11 @@ def optimize_skills(region: int, plantzone: int, dist: float, worker: dict, data
         if step_candidates:
             step_candidates.sort(key=lambda x: x["profit"], reverse=True)
             step_best_skill = step_candidates[0]["sk"]
+            assert isinstance(step_best_skill, int)
             step_skills = step_base_skills + [step_best_skill]
-            step_results.append({"skills": step_skills, "profit": step_candidates[0]["profit"]})
+            # {"skills": step_skills, "profit": step_candidates[0]["profit"]}
+            skills_value = SkillsValue({"skills": step_skills, "profit": step_candidates[0]["profit"]})
+            step_results.append(skills_value)
             ml_best_skills.append(step_best_skill)
             ml_skills.remove(step_best_skill)
         else:
