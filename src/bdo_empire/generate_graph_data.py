@@ -8,6 +8,7 @@ from loguru import logger
 from rustworkx import PyDiGraph
 
 from bdo_empire.api_exploration_graph import get_all_pairs_path_lengths
+from bdo_empire.api_rx_pydigraph import subgraph_stable
 
 
 def prep_graph_nodes(solver_graph: PyDiGraph, data: dict[str, Any]) -> int | None:
@@ -25,7 +26,7 @@ def prep_graph_nodes(solver_graph: PyDiGraph, data: dict[str, Any]) -> int | Non
     solver_graph.attrs = {"node_key_by_index": node_key_by_index, "root_indices": root_indices}
 
     logger.debug(f"Found {len(root_indices)} root indices:")
-    logger.debug(f"(index, waypoint): {[(i, solver_graph[i]['waypoint_key']) for i in root_indices]}")
+    logger.trace(f"(index, waypoint): {[(i, solver_graph[i]['waypoint_key']) for i in root_indices]}")
 
     setup_terminals(solver_graph, data)
     setup_roots(solver_graph, data)
@@ -68,11 +69,14 @@ def setup_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> list[int]:
         node = solver_graph[i]
         if not node["is_workerman_plantzone"]:
             continue
-        terminal_indices.append(i)
 
-        prizes = data["plant_values"][node["waypoint_key"]]
+        terminal_indices.append(i)
+        waypoint_key = node["waypoint_key"]
+
+        prizes = data["plant_values"][waypoint_key]
         prizes = sorted(prizes.items(), key=lambda x: x[1]["value"], reverse=True)
         prizes = dict(prizes[:top_n])
+
         values = {}
         # NOTE: Prize keys are affiliated town regions not waypoint keys, so translate!
         for warehouse_key, prize_data in prizes.items():
@@ -93,7 +97,7 @@ def setup_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> list[int]:
         for root, prize in prizes.items():
             town = solver_graph[root]["waypoint_key"]
             region = town_to_region_map[int(town)]
-            logger.debug(f"{node['waypoint_key']:>5} {region:>5} {town:>5} {prize:>5}")
+            logger.trace(f"{node['waypoint_key']:>5} {region:>5} {town:>5} {prize:>5}")
 
     solver_graph.attrs["terminals"] = terminal_indices
     return terminal_indices
@@ -137,9 +141,11 @@ def setup_roots(solver_graph: PyDiGraph, data: dict[str, Any]):
         node["ub"] = max_ub
         node["capacity_cost"] = capacity_cost
 
-        logger.trace(
+        logger.debug(
             f"{node['waypoint_key']:>5} region_key: {region_key:>5} ub: {max_ub} costs: {capacity_cost}"
         )
+
+    logger.info(f"  {len(root_indices)} root nodes set up.")
 
 
 def setup_node_transit_bounds(solver_graph: PyDiGraph, data: dict[str, Any], super_root_index: int | None):
@@ -179,91 +185,12 @@ def setup_node_transit_bounds(solver_graph: PyDiGraph, data: dict[str, Any], sup
 
         transit_ubs = {r: root_transit_ub[r] for r in nearest_roots}
         node["transit_bounds"] = transit_ubs
-        logger.debug(
+        logger.trace(
             f"{solver_graph[i]['waypoint_key']:>5} { {solver_graph[i]['waypoint_key']: ub for i, ub in transit_ubs.items()} }"
         )
 
 
-def prune_NTD1(G: PyDiGraph, quiet: bool = False) -> int:
-    """In-Place removal of non-terminal non-forced leaf nodes."""
-    if not quiet:
-        logger.info("Pruning NTD1...")
-
-    num_removed = 0
-    while removal_nodes := [
-        v
-        for v in G.node_indices()
-        if G.out_degree(v) == 1
-        and not G[v].get("is_super_terminal", False)
-        and not G[v]["is_workerman_plantzone"]
-    ]:
-        G.remove_nodes_from(removal_nodes)
-        num_removed += len(removal_nodes)
-        removal_nodes = []
-
-    if not quiet:
-        logger.debug(f"  removed {num_removed} leaf nodes")
-    return num_removed
-
-
-def reduce_bounds(G: PyDiGraph, super_root_index: int | None):
-    """Limits transit upper bounds via intersection with neighbor bounds."""
-    logger.info("Reducing bounds...")
-
-    ubs_to_deactivate: list[set[int]] = []
-    for i in G.node_indices():
-        if i == super_root_index:
-            continue
-        node = G[i]
-        successors = G.successor_indices(i)
-
-        # NOTE: This may be too much and could cut out potential paths because it would
-        # cascade unless we store the changes and then apply them at the end of processing
-        # which short-circuits the cascading... testing on our input graph shows this is OK.
-
-        # Reduce root ub each (node, successor) pair to the minimum between them
-        # and then the minimum of those results, since each ub is equal to the capacity
-        # of the root this is a simple all or nothing per root...
-        # This essentially cuts out the fringe of the potential transit flow network.
-        active_ubs = {
-            k for k in node["transit_bounds"] if node["transit_bounds"][k] > 0 and k != super_root_index
-        }
-        for j in successors:
-            if j == super_root_index:
-                continue
-            neighbor = G[j]
-            neighbor_ubs = {k for k in neighbor["transit_bounds"] if neighbor["transit_bounds"][k] > 0}
-            active_ubs &= neighbor_ubs
-
-        deactivate_ubs = {k for k in node["transit_bounds"] if k not in active_ubs}
-        ubs_to_deactivate.append(deactivate_ubs)
-
-    for i, G_i in enumerate(G.node_indices()):
-        if G_i == super_root_index:
-            continue
-        node = G[G_i]
-        for ub in ubs_to_deactivate[i]:
-            node["transit_bounds"].pop(ub, None)
-
-    # Remove root from disconnected transit layer components
-    for r in G.attrs["root_indices"]:
-        if r == super_root_index:
-            continue
-        # node_map maps from subgraph node index to global graph node index
-        subG, node_map = G.subgraph_with_nodemap([i for i in G.node_indices() if r in G[i]["transit_bounds"]])
-        node_map = bidict(node_map)
-        subg_r = node_map.inv[r]
-        cc = rx.weakly_connected_components(subG)
-        for c in cc:
-            if subg_r in c:
-                continue
-            for i in c:
-                G[node_map[i]]["transit_bounds"].pop(r, None)
-
-        subG, node_map = G.subgraph_with_nodemap([i for i in G.node_indices() if r in G[i]["transit_bounds"]])
-
-
-def reduce_bounds_via_root_pruning(G: PyDiGraph) -> None:
+def reduce_bounds_via_transit_layer_pruning(G: PyDiGraph) -> None:
     """
     Limits transit upper bounds by performing Pruning on the root-specific subgraphs.
     This effectively eliminates dead-end branches in the potential flow network for each root.
@@ -272,18 +199,32 @@ def reduce_bounds_via_root_pruning(G: PyDiGraph) -> None:
 
     from bdo_empire.api_common import SUPER_ROOT
 
-    super_root_index = None
-    super_terminal_indices = []
+    # Setup protected nodes
+    flow_roots = G.attrs["root_indices"].copy()
+    protected_nodes = set(G.attrs["terminals"]) | set(flow_roots)
     for i in G.node_indices():
         if G[i].get("is_super_terminal", False):
-            super_terminal_indices.append(i)
+            protected_nodes.add(i)
         if G[i]["waypoint_key"] == SUPER_ROOT:
-            super_root_index = i
+            protected_nodes.add(i)
 
-    flow_roots = G.attrs["root_indices"].copy()
-    if super_root_index is not None:
-        flow_roots.append(super_root_index)
+    # Remove root transit bounds from disconnected transit layer components
+    for r in flow_roots:
+        # node_map maps from subgraph node index to global graph node index
+        subG, node_map = G.subgraph_with_nodemap([i for i in G.node_indices() if r in G[i]["transit_bounds"]])
+        node_map = bidict(node_map)
+        subg_r = node_map.inv[r]
 
+        cc = rx.weakly_connected_components(subG)
+        logger.trace(f"Found {len(cc)} transit layer components for root {G[r]['waypoint_key']}")
+        for c in cc:
+            if subg_r in c:
+                continue
+            logger.trace(f"  removing transit layer component: {[subG[i]['waypoint_key'] for i in c]}")
+            for i in c:
+                G[node_map[i]]["transit_bounds"].pop(r, None)
+
+    # Isolate each root transit layer and prune "transit_bounds" leaf nodes
     for r in flow_roots:
         transit_nodes = {
             i
@@ -292,98 +233,39 @@ def reduce_bounds_via_root_pruning(G: PyDiGraph) -> None:
         }
         if not transit_nodes:
             continue
+        orig_transit_node_count = len(transit_nodes)
 
-        transit_subgraph, node_map = G.subgraph_with_nodemap(list(transit_nodes))
-        removed_count = prune_NTD1(transit_subgraph, quiet=True)
-        surviving_transit_nodes = {node_map[i] for i in transit_subgraph.node_indices()}
-        removed_transit_nodes = set(transit_nodes) - surviving_transit_nodes
+        subG = subgraph_stable(transit_nodes, G)
+        assert isinstance(subG, PyDiGraph)
+
+        # Recursively remove leaf nodes from transit subgraph
+        removed_transit_nodes = set()
+
+        while removal_nodes := [
+            v
+            for v in transit_nodes
+            if len(set(subG.predecessor_indices(v)) | set(subG.successor_indices(v))) == 1
+            and v not in protected_nodes
+        ]:
+            # Debugging: Leaf identification
+            for v in removal_nodes:
+                neighbors = set(subG.predecessor_indices(v)) | set(subG.successor_indices(v))
+                logger.trace(
+                    f"Pruning: node {G[v]['waypoint_key']} (root {G[r]['waypoint_key']}) with neighbors: {[G[n]['waypoint_key'] for n in neighbors]} [protected: {v in protected_nodes}]"
+                )
+            subG.remove_nodes_from(removal_nodes)
+            removed_transit_nodes.update(removal_nodes)
+            transit_nodes -= set(removal_nodes)
+
+        # Remove transit bounds from removed leaf nodes in the primary graph
+        for i in removed_transit_nodes:
+            G[i]["transit_bounds"].pop(r, None)
+
         if removed_transit_nodes:
-            for i in removed_transit_nodes:
-                G[i]["transit_bounds"].pop(r, None)
-
-        if removed_count:
-            logger.debug(f"  removed {removed_count} leaf nodes from root {r}")
-
-
-def setup_ranked_basin_bottlenecks(G: PyDiGraph, super_root_index: int | None) -> None:
-    """Compute per-root basins via rank-1 core union and connectivity backfill."""
-    basins: dict[int, tuple[list[int], int, list[int]]] = {}
-    roots_indices = G.attrs["root_indices"]
-    terminal_indices = G.attrs["terminals"]
-
-    # Add edge costs to edges based on destination need_exploration_point
-    for u, v in G.edge_list():
-        G.update_edge(u, v, {"weight": G[v]["need_exploration_point"]})
-
-    for r in roots_indices:
-        # Step a: Root transit subgraph (omit super root)
-        if super_root_index is not None and r == super_root_index:
-            continue
-        transit_nodes = {i for i in G.node_indices() if r in G[i].get("transit_bounds", {})}
-        transit_subG, node_map = G.subgraph_with_nodemap(list(transit_nodes))
-        node_map = bidict(node_map)
-
-        # Step b: Remove non-rank1 terminals from transit_subG
-        transit_terminals = [t for t in terminal_indices if t in transit_nodes]
-
-        # NOTE: I'm still not sure which is **best** but rank1 benches better on my test incidents
-        # for rank 1 only
-        rank1_ts = [t for t in transit_terminals if G[t]["prizes"] and next(iter(G[t]["prizes"].keys())) == r]
-
-        # for all [:n] ranks (where n is 1 for 2, 2 for 3, ...)
-        # rank1_ts = [t for t in transit_terminals if r not in list(G[t]["prizes"].keys())[:1]]
-        non_rank1_ts = set(transit_terminals) - set(rank1_ts)
-        transit_subG_prime = transit_subG.copy()
-        transit_subG_prime.remove_nodes_from([node_map.inv[t] for t in non_rank1_ts if t in node_map])
-
-        # Eliminate all non-rank1 terminals and non-cycle, non-rank1 terminal paths
-        prune_NTD1(transit_subG_prime, quiet=True)
-
-        # Step c: All-pairs shortest paths on remaining terminals + root in subG
-        shortest_paths = rx.digraph_all_pairs_dijkstra_shortest_paths(
-            transit_subG_prime, lambda payload: payload["weight"]
-        )
-        used_nodes = set()
-        for source, dest_paths in shortest_paths.items():
-            if node_map[source] != r and node_map[source] not in rank1_ts:
-                continue
-            for dest, path in dest_paths.items():
-                if node_map[dest] not in rank1_ts:
-                    continue
-                used_nodes.update(path)
-
-        # Step d: Keep only union nodes in transit_subG
-        core_global = {node_map[n] for n in used_nodes}
-        if len(core_global) < 2:
-            logger.debug(f"  Skipping root {r}: insufficient core")
-            continue
-
-        # Step e: New subG with global terminals + core
-        basin_nodes = core_global | set(terminal_indices)
-        basin_subG, basin_map = G.subgraph_with_nodemap(list(basin_nodes))
-        basin_map = bidict(basin_map)
-
-        # Step f: Remove isolates
-        isolates_local = rx.isolates(basin_subG)
-        basin_subG.remove_nodes_from(isolates_local)
-        basin_global = {basin_map[ln] for ln in basin_subG.node_indices()}
-        all_enclosed_ts = sorted([t for t in terminal_indices if t in basin_global])
-
-        # Step g: Cut nodes = transit nodes not in basin_global with a neighbor in basin_global
-        cut_nodes = set()
-        for node in sorted(transit_nodes - basin_global):
-            if any(nb in basin_global for nb in G.neighbors(node)):
-                cut_nodes.add(node)
-        cut_value = len(cut_nodes)
-
-        if not all_enclosed_ts or not cut_nodes:
-            logger.debug(f"  Skipping root {r}: empty basin or cuts")
-            continue
-
-        basins[r] = (all_enclosed_ts, cut_value, list(cut_nodes))
-
-    G.attrs["basins"] = basins
-    logger.info(f"Computed ranked basins for {len(basins)} roots")
+            removed_count = len(removed_transit_nodes)
+            logger.debug(
+                f"  removed {removed_count} of {orig_transit_node_count} leaf nodes from root {r} transit layer..."
+            )
 
 
 def generate_graph_data(data: dict[str, Any]) -> dict[str, Any]:
@@ -393,17 +275,8 @@ def generate_graph_data(data: dict[str, Any]) -> dict[str, Any]:
     G = data["exploration_graph"].copy()
     super_root_index = prep_graph_nodes(G, data)
 
-    # NOTE: These steps are based on the empirical testing in the milp-flow playground:
-    # overall pruning of non terminal leaf nodes from graph
-    prune_NTD1(G)
-    # per transit layer NTD1 pruning
-    reduce_bounds_via_root_pruning(G)
-    # transit layer region boundary flow reductions
-    reduce_bounds(G, super_root_index)
-    # transit layer region boundary NTD1 pruning
-    reduce_bounds_via_root_pruning(G)
-    # dynamic root basin cuts generation
-    setup_ranked_basin_bottlenecks(G, super_root_index)
+    # Per transit layer NTD1 leaf and unreachable node pruning
+    reduce_bounds_via_transit_layer_pruning(G)
 
     if super_root_index is not None:
         # insert super root transit bounds to all remaining nodes
@@ -415,6 +288,18 @@ def generate_graph_data(data: dict[str, Any]) -> dict[str, Any]:
             if i == super_root_index:
                 continue
             G[i]["transit_bounds"][super_root_index] = ub
+
+    # Remove edges from terminals from predecessors since modelling is done via flow from terminals to roots
+    terminal_indices = G.attrs["terminals"]
+    for t in terminal_indices:
+        preds = G.predecessor_indices(t)
+        for p in preds:
+            G.remove_edge(p, t)
+            assert G.has_edge(t, p), f"Removed edge {p} -> {t} but terminal is not connected via {t} -> {p}!"
+
+    num_roots = len(G.attrs["root_indices"])
+    roots_count = sum(1 for i in G.node_indices() if G[i]["is_base_town"])
+    logger.info(f"  Generated graph with {num_roots} roots and {roots_count} basetowns...")
 
     data["solver_graph"] = G
     return data
