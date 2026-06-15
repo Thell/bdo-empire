@@ -1,14 +1,24 @@
 # generate_workerman_data.py
 
+import copy
 from collections import Counter
 
 import rustworkx as rx
 from highspy import Highs
+from loguru import logger
 from rustworkx import PyDiGraph
 from tabulate import tabulate
 
 import bdo_empire.data_store as ds
-from bdo_empire.api_common import CALPHEON_KEY, SUPER_ROOT, extract_base_empire
+from bdo_empire.api_common import (
+    CALPHEON_KEY,
+    FARMING_WORKER_SILVER_PER_DAY,
+    FARMING_WORKER_SILVER_PER_DAY_KEY,
+    FENCE_1_KEY,
+    SUPER_ROOT,
+    extract_base_empire,
+)
+from bdo_empire.api_exploration_graph import get_fence
 from bdo_empire.api_rx_pydigraph import subgraph_stable
 
 
@@ -28,13 +38,18 @@ def generate_workerman_json(workers, data, lodging):
         "farmingEnable": False,
         "farmingProfit": 0,
         "farmingBareProfit": 0,
-        "grindTakenList": data["force_active_node_ids"],
+        "forcedTakenList": data["force_active_node_ids"],
     }
     return workerman_json
 
 
 def make_workerman_worker(town_id: int, origin_id: int, worker_data: dict, stash_id: int):
     """Populate and return a 'dummy' instance of a workerman user worker dict."""
+    if origin_id >= FENCE_1_KEY and origin_id <= FENCE_1_KEY + 9:
+        job = "farming"
+    else:
+        job = {"kind": "plantzone", "pzk": int(origin_id), "storage": stash_id}
+
     worker = {
         "tnk": town_id,
         "charkey": str(worker_data["charkey"]),
@@ -43,17 +58,143 @@ def make_workerman_worker(town_id: int, origin_id: int, worker_data: dict, stash
         "wspdSheet": worker_data["wspd"],
         "mspdSheet": worker_data["mspd"],
         "luckSheet": worker_data["luck"],
-        "skills": [int(s) for s in worker_data["skills"]],
-        "job": {"kind": "plantzone", "pzk": int(origin_id), "storage": stash_id},
+        "skills": [int(s) for s in worker_data.get("skills", [])],
+        "job": job,
     }
     return worker
 
 
-def generate_graph(G: PyDiGraph, model: Highs, vars: dict):
+def trace_flow(G: PyDiGraph, model: Highs, vars: dict, data: dict):
+    flow_eps = 1e-6
+
+    x = vars["x"]
+    x_t_r = vars["x_t_r"]
+    f_r = vars["f_r"]
+
+    # Root -> nodes that participate in positive flow
+    root_flow_nodes: dict[int, set[int]] = {}
+    root_flow_arcs: dict[int, list[tuple[int, int, float]]] = {}
+
+    for (r, i, j), flow_var in f_r.items():
+        value = model.variableValue(flow_var)
+        if value <= flow_eps:
+            continue
+
+        root_flow_nodes.setdefault(r, set()).update((i, j))
+        root_flow_arcs.setdefault(r, []).append((i, j, value))
+
+    logger.info("=== FLOW TRACE ===")
+
+    for r in sorted(root_flow_nodes):
+        flow_nodes = root_flow_nodes[r]
+
+        logger.info(
+            f"root={G[r]['waypoint_key']} flow_nodes={len(flow_nodes)} flow_arcs={len(root_flow_arcs[r])}"
+        )
+
+        missing_x = [n for n in flow_nodes if round(model.variableValue(x[n])) != 1]
+
+        if missing_x:
+            logger.error(
+                f"Flow node(s) without x=1: {[(n, G[n]['waypoint_key'], model.variableValue(x[n])) for n in missing_x]}"
+            )
+
+    assignments: list[tuple[int, int]] = []
+
+    key_list = list(x_t_r.keys())
+    for idx, var in enumerate(x_t_r.values()):
+        if round(model.variableValue(var)) == 1:
+            assignments.append(key_list[idx])
+
+    logger.info(f"assigned terminal/root pairs= {len(assignments)}")
+
+    for t, r in assignments:
+        flow_adj: dict[int, list[int]] = {}
+
+        for rr, i, j, value in (
+            (rr, i, j, v) for rr, arcs in root_flow_arcs.items() if rr == r for i, j, v in arcs
+        ):
+            flow_adj.setdefault(i, []).append(j)
+
+        seen = {t}
+        stack = [t]
+
+        while stack:
+            cur = stack.pop()
+
+            for nxt in flow_adj.get(cur, []):
+                if nxt in seen:
+                    continue
+                seen.add(nxt)
+                stack.append(nxt)
+
+        if r not in seen:
+            logger.error(
+                f"FLOW REACHABILITY FAILURE terminal={G[t]['waypoint_key']} root={G[r]['waypoint_key']}"
+            )
+
+            logger.error(
+                f"terminal transit bounds= { {G[k]['waypoint_key']: v for k, v in G[t]['transit_bounds'].items()} }"
+            )
+
+            logger.error(
+                f"root transit bounds={ {G[k]['waypoint_key']: v for k, v in G[r]['transit_bounds'].items()} }",
+            )
+
+    return {
+        "root_flow_nodes": root_flow_nodes,
+        "root_flow_arcs": root_flow_arcs,
+    }
+
+
+def generate_graph(G: PyDiGraph, model: Highs, vars: dict, data: dict):
     """Sub graph G to the solution graph using only transitted nodes from terminal, root paths."""
     # Since the Highs model is not setup to reduce the cost as well as maximize the value, we
     # do it manually here.
+
     terminal_sets = {}
+
+    # # Debugging code for reachability issues post CP reduction 06/04/26 patch and the
+    # # generate_graph reductions to the root transit layers...
+    # trace_results = trace_flow(G, model, vars, data)
+    # root_flow_nodes = trace_results["root_flow_nodes"]
+    # root_flow_arcs = trace_results["root_flow_arcs"]
+
+    # First we need to add farm fences for the stable subgraphing.
+    farm_r = vars["farm_r"]
+    active_graph_fence_ids = []
+    if farm_r:
+        fence_ids = data["farm_fence_keys"]
+        farmingWorkerSilerPerDay = data["farmingWorkerSilverPerDay"]
+        num_farm_fences = data["num_farm_fences"]
+
+        roots_assigned_fences = []
+        for r, v in vars["farm_r"].items():
+            count = round(model.variableValue(v))
+            roots_assigned_fences.extend([r] * count)
+
+        num_assigned_fences = len(roots_assigned_fences)
+        if num_assigned_fences > num_farm_fences:
+            logger.error(f"Too many assigned fences: {len(roots_assigned_fences)} > {len(fence_ids)}")
+            raise ValueError("Too many assigned fences... model is broken.")
+        elif num_assigned_fences < num_farm_fences:
+            unassigned_count = len(fence_ids) - num_assigned_fences
+            logger.warning(f"There are {unassigned_count} unassigned fences.")
+
+        ref_fence_node = get_fence({})
+        for r, f in zip(roots_assigned_fences, fence_ids):
+            fence_node = copy.deepcopy(ref_fence_node)
+            fence_node["waypoint_key"] = f
+            fence_node["region_key"] = G[r]["region_key"]
+            fence_node["prizes"] = {r: farmingWorkerSilerPerDay}
+
+            fence_node_id = G.add_node(fence_node)
+            active_graph_fence_ids.append(fence_node_id)
+            G.add_edge(fence_node_id, r, None)
+            G.add_edge(r, fence_node_id, None)
+
+            terminal_sets[fence_node_id] = r
+
     key_list = list(vars["x_t_r"].keys())
     for i, t_var in enumerate(vars["x_t_r"].values()):
         if round(model.variableValue(t_var)) == 1:
@@ -62,12 +203,25 @@ def generate_graph(G: PyDiGraph, model: Highs, vars: dict):
 
     # Filter non-used nodes from the solution nodes using all terminal -> root paths.
     active_graph_indices = [i for i, x_var in vars["x"].items() if round(model.variableValue(x_var)) == 1]
+
+    # Ensures that all fence assigned roots are active.
+    active_graph_indices.extend(terminal_sets.keys())
+    active_graph_indices.extend(terminal_sets.values())
+
+    # # Debugging - resolve non-reachable t,r assignment resulting from the root transit layer reduction.
+    # flow_nodes = set()
+    # for nodes in root_flow_nodes.values():
+    #     flow_nodes.update(nodes)
+    # selected_nodes = set(active_graph_indices)
+    # missing = flow_nodes - selected_nodes
+    # extra = selected_nodes - flow_nodes
+
     subG = subgraph_stable(active_graph_indices, G)
     used_active_nodes = set()
     for terminal, root in terminal_sets.items():
         # Since the HiGHs solution is a tree we can just use hops of 1.
         path = rx.dijkstra_shortest_paths(subG, terminal, root, default_weight=1)
-        assert path[root]
+        assert root in path, f"No path from {subG[terminal]['waypoint_key']} to {subG[root]['waypoint_key']}"
         used_active_nodes.update(path[root])
     subG.remove_nodes_from(set(subG.node_indices()) - used_active_nodes)
 
@@ -80,6 +234,21 @@ def generate_graph(G: PyDiGraph, model: Highs, vars: dict):
         subG.remove_node(super_root_index)
 
     return subG, terminal_sets
+
+
+def generate_farm_worker(region_key: int, data: dict):
+    from bdo_empire.generate_value_data import get_all_region_workers, string_keys_to_ints
+
+    if not data.get("worker_static", False):
+        data["worker_static"] = string_keys_to_ints(ds.read_json("worker_static.json"))
+    # We always use a 'giant' type worker for farmers...
+    workers = get_all_region_workers(data)[region_key]
+    for worker in workers.values():
+        if worker["isGiant"]:
+            return worker
+
+    logger.error(f"Failed to find a 'giant' worker for region {region_key}")
+    raise ValueError(f"Failed to find a 'giant' worker for region {region_key}")
 
 
 def generate_workerman_workers(G: PyDiGraph, terminal_sets: dict, data: dict):
@@ -95,8 +264,12 @@ def generate_workerman_workers(G: PyDiGraph, terminal_sets: dict, data: dict):
         root_key = root_data["waypoint_key"]
 
         # NOTE: Plant values data is keyed by warehouse keys!
-        prize_data = data["plant_values"][terminal_key][root_data["region_key"]]
-        worker_data = prize_data["worker_data"]
+        if terminal_key >= FENCE_1_KEY and terminal_key <= FENCE_1_KEY + 9:
+            worker_data = generate_farm_worker(root_data["region_key"], data)
+            worker_data["value"] = data.get(FARMING_WORKER_SILVER_PER_DAY_KEY, FARMING_WORKER_SILVER_PER_DAY)
+        else:
+            prize_data = data["plant_values"][terminal_key][root_data["region_key"]]
+            worker_data = prize_data["worker_data"]
 
         user_worker = make_workerman_worker(root_key, terminal_key, worker_data, stash_town_id)
         workerman_user_workers.append(user_worker)
@@ -153,16 +326,24 @@ def print_summary(
         root_data = G[root]
         root_region_key = root_data["region_key"]
 
-        prize_data = data["plant_values"][terminal_key][root_region_key]
-        worker_data = prize_data["worker_data"]
+        is_farm = terminal_key >= FENCE_1_KEY and terminal_key <= FENCE_1_KEY + 9
+        if is_farm:
+            worker_data = generate_farm_worker(root_region_key, data)
+            worker_data["value"] = data.get(FARMING_WORKER_SILVER_PER_DAY_KEY, FARMING_WORKER_SILVER_PER_DAY)
+        else:
+            prize_data = data["plant_values"][terminal_key][root_region_key]
+            worker_data = prize_data["worker_data"]
 
         worker = worker_data["charkey"]
         worker = f"{worker} {chatKey_to_species_symbol_map[worker]}"
 
+        node_str = "Farming Fence" if is_farm else exploration_strings[terminal_data["link_list"][0]]
+        task_str = "Cultivation" if is_farm else exploration_strings[terminal_key]
+
         table_rows.append({
             "warehouse": region_strings[root_region_key],
-            "node": exploration_strings[terminal_data["link_list"][0]],
-            "task": exploration_strings[terminal_key],
+            "node": node_str,
+            "task": task_str,
             "worker": worker,
             "value": G[terminal]["prizes"][root],
             "value_rank": list(G[terminal]["prizes"]).index(root) + 1,
@@ -266,7 +447,7 @@ def generate_workerman_data(highs_results: tuple[Highs, dict], lodging_specs: di
 
     model, vars = highs_results
     G = data["solver_graph"]
-    solution_subG, terminal_sets = generate_graph(G, model, vars)
+    solution_subG, terminal_sets = generate_graph(G, model, vars, data)
     assert isinstance(solution_subG, PyDiGraph)
 
     workers = generate_workerman_workers(solution_subG, terminal_sets, data)

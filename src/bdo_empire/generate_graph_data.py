@@ -7,6 +7,7 @@ from bidict import bidict
 from loguru import logger
 from rustworkx import PyDiGraph
 
+from bdo_empire.api_common import FARMING_WORKER_SILVER_PER_DAY_KEY
 from bdo_empire.api_exploration_graph import get_all_pairs_path_lengths
 from bdo_empire.api_rx_pydigraph import subgraph_stable
 
@@ -296,6 +297,10 @@ def generate_graph_data(data: dict[str, Any]) -> dict[str, Any]:
         for p in preds:
             G.remove_edge(p, t)
             assert G.has_edge(t, p), f"Removed edge {p} -> {t} but terminal is not connected via {t} -> {p}!"
+
+    G.attrs["farm_fence_keys"] = data["farm_fence_keys"]
+    G.attrs["num_farm_fences"] = data["num_farm_fences"]
+    G.attrs["farm_fence_value"] = data[FARMING_WORKER_SILVER_PER_DAY_KEY]
 
     num_roots = len(G.attrs["root_indices"])
     roots_count = sum(1 for i in G.node_indices() if G[i]["is_base_town"])

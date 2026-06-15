@@ -6,6 +6,11 @@ from typing import Any
 from loguru import logger
 
 import bdo_empire.data_store as ds
+from bdo_empire.api_common import (
+    FARMING_WORKER_SILVER_PER_DAY,
+    FARMING_WORKER_SILVER_PER_DAY_KEY,
+    FENCE_1_KEY,
+)
 from bdo_empire.api_exploration_graph import get_clean_exploration_data, get_exploration_graph
 from bdo_empire.generate_value_data import generate_value_data
 
@@ -294,19 +299,31 @@ def generate_reference_data(
     """
     data = {}
     data["config"] = config
-    data["force_active_node_ids"] = force_active_node_ids
+
+    farming_fence_keys = [i for i in force_active_node_ids if i >= FENCE_1_KEY and i < FENCE_1_KEY + 10]
+    forcedTakenList = [i for i in force_active_node_ids if i not in farming_fence_keys]
+    data["farm_fence_keys"] = farming_fence_keys
+    data["num_farm_fences"] = len(farming_fence_keys)
+    data[FARMING_WORKER_SILVER_PER_DAY_KEY] = prices.get(
+        FARMING_WORKER_SILVER_PER_DAY_KEY, FARMING_WORKER_SILVER_PER_DAY
+    )
+    if len(farming_fence_keys) > 0 and FARMING_WORKER_SILVER_PER_DAY_KEY not in prices:
+        logger.warning(f"Missing price for {FARMING_WORKER_SILVER_PER_DAY_KEY}. Using default value.")
+
+    data["force_active_node_ids"] = forcedTakenList
+
     set_data_file_values(data)
 
-    data["max_ub"] = len([v for v in data["exploration"].values() if v["is_workerman_plantzone"]]) + len(
-        force_active_node_ids
-    )
+    num_plantzones = len([v for v in data["exploration"].values() if v["is_workerman_plantzone"]])  # ty:ignore[unresolved-attribute]
+    data["max_ub"] = num_plantzones + len(force_active_node_ids)
 
     data["affiliated_town_region"] = get_affiliated_town_regions(data)
 
-    # 'plantzone_drops.json' and 'skills.json' data are manually updated workerman data files
-    # so we need to ensure we have the latest versions of each.
+    # NOTE: 'plantzone_drops.json' and 'skills.json' data are manually updated workerman
+    #        data files so we need to ensure we have the latest versions of each.
     update_workerman_data()
 
     set_data_plant_values(prices, modifiers, data)
     set_lodging_bounds_costs(lodging, data)
+
     return data

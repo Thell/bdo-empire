@@ -19,6 +19,17 @@ def create_model(
 
     model = Highs()
 
+    assert isinstance(G, PyDiGraph)
+    assert G.attrs
+    assert "farm_fence_value" in G.attrs
+    assert "num_farm_fences" in G.attrs
+    assert "root_indices" in G.attrs
+    assert "terminals" in G.attrs
+
+    farm_fence_value = G.attrs.get("farm_fence_value")
+    num_farm_fences = G.attrs.get("num_farm_fences")
+    logger.info(f"  Modelling with a farm fence value of {farm_fence_value} and {num_farm_fences} fences.")
+
     roots_indices = G.attrs["root_indices"]
     terminal_indices = G.attrs["terminals"]
     super_root_index = None
@@ -61,15 +72,13 @@ def create_model(
         for c in range(len(G[r]["capacity_cost"])):
             c_r[(c, r)] = model.addBinary()
 
-    # # I'm still not positive this is helpful in _most_ instances.
-    # # When it helps it is noticeable and when it doesn't it doesn't hurt performance too much.
-    # # I wasn't able to determine a pre-processing analysis that would allow for a solid option trigger.
-    # # Skip adjacent (e.g., no constr for 0&1, but yes for 0&2)
-    # for r in roots_indices:
-    #     n = len(G[r]["capacity_cost"])
-    #     for c1 in range(n):
-    #         for c2 in range(c1 + 2, n):
-    #             model.addConstr(c_r[(c1, r)] + c_r[(c2, r)] <= 1)
+    # Farming assignment selector for each root.
+    # Farming workers consume lodging capacity but do not participate in the network flow.
+    # The optimizer may choose to allocate up to num_farming_fences workers across roots.
+    farm_r = {}
+    if num_farm_fences:
+        for r in roots_indices:
+            farm_r[r] = model.addIntegral(lb=0, ub=num_farm_fences)
 
     # Flow for root on arc (i,j); when root can transit from i to j
     f_r = {}
@@ -80,18 +89,13 @@ def create_model(
             f_r[(r, i, j)] = model.addVariable(lb=0, ub=ub)
 
     # Objective
-    # This is another of those changes where I am not positive on the utility of it.
-    # When it helps it is noticeable and when it doesn't it doesn't hurt performance too much.
-    # I wasn't able to determine a pre-processing analysis that would allow for a solid option trigger.
     # Scale the prizes for the solver. The runner will use rounding to 1e6 for incumbent promotions.
+    farm_prizes = model.qsum(farm_r.get(r, 0) * (farm_fence_value / 1e6) for r in roots_indices)
     prizes = model.qsum(
         x_t_r[(t, r)] * (prize / 1e6) for t in terminal_indices for r, prize in G[t]["prizes"].items()
     )
 
-    # prizes = model.qsum(
-    #     x_t_r[(t, r)] * int(prize) for t in terminal_indices for r, prize in G[t]["prizes"].items()
-    # )
-    model.setObjective(prizes, sense=ObjSense.kMaximize)
+    model.setObjective(prizes + farm_prizes, sense=ObjSense.kMaximize)
 
     # Hard Budget Constraint
     budget = config["budget"]
@@ -133,6 +137,12 @@ def create_model(
         for t in super_terminal_indices:
             model.addConstr(x_t_r[(t, super_root_index)] == 1)
             model.addConstr(x[t] == 1)
+    if num_farm_fences:
+        # A maximum of num_farming_fences may be assigned in total.
+        # This assignment does not require any transit through the root, nor
+        # does it require any exploration point accounting within the model,
+        # it alters the model only through its usage of capacity.
+        model.addConstr(model.qsum(farm_r[r] for r in roots_indices) <= num_farm_fences)
 
     # Ranked basins cuts
     basins = G.attrs.get("basins", {})
@@ -184,13 +194,20 @@ def create_model(
                     model.addConstr(
                         in_flow == model.qsum(x_t_r[(t, r)] for t in terminal_indices if (t, r) in x_t_r)
                     )
+
                     # Capacity at root: capacity cost list has a no-cost 'empty' zeroth index with capacity 0
                     capacity_costs = G[r]["capacity_cost"]
-                    # While this could be `== 1` empirical testing suggests `== x[r]` is more effective
-                    model.addConstr(model.qsum(c_r[(c, r)] for c in range(len(capacity_costs))) == x[r])
-                    model.addConstr(
-                        in_flow == model.qsum(c * c_r[(c, r)] for c in range(len(capacity_costs)))
-                    )
+
+                    # There must be only one selected capacity at each root
+                    selected_capacity = model.qsum(c_r[(c, r)] for c in range(len(capacity_costs)))
+                    model.addConstr(selected_capacity == 1)
+
+                    # The selected capacity must be equal to inflow assigned and the farming fences assigned
+                    capacity_limit = model.qsum(c * c_r[(c, r)] for c in range(len(capacity_costs)))
+                    if num_farm_fences:
+                        model.addConstr(in_flow + farm_r[r] == capacity_limit)
+                    else:
+                        model.addConstr(in_flow == capacity_limit)
                 else:
                     # Flow at SUPER_ROOT is only allowed for incoming SUPER_TERMINAL transit
                     # Super root has no capacity limit or capacity cost.
@@ -230,6 +247,7 @@ def create_model(
     # If Ancado capacity 0 is not selected, then at least one connection path must be selected.
     model.addConstr(model.qsum(connect_vars) >= 1 - c_r[(0, ancado_node_id)])
 
+    return model, {"x": x, "x_t_r": x_t_r, "c_r": c_r, "f_r": f_r, "farm_r": farm_r}
 
 
 def optimize(

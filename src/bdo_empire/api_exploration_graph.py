@@ -3,7 +3,7 @@
 import rustworkx as rx
 from bidict import bidict
 
-from bdo_empire.api_common import get_clean_exploration_data
+from bdo_empire.api_common import FENCE_1_KEY, get_clean_exploration_data
 
 
 def exploration_graph_nw(data: dict, directed: bool = False) -> rx.PyGraph | rx.PyDiGraph:
@@ -240,6 +240,45 @@ def generate_territory_root_sets(exploration_data: dict):
     territory_neighbors = get_neighboring_territories(exploration_data)
     territory_root_sets = get_territory_root_sets(exploration_data, territory_neighbors)
     return territory_root_sets
+
+
+def get_fence(config: dict) -> dict:
+    """Returns a workerman plantzone exploration node with waypoint_key: FENCE_1_KEY and
+    link_list consisting of all other exploration nodes with "is_base_town"
+    attribute set. If valid_nodes is not empty the fence's link_list will
+    be filtered to the valid_nodes.
+
+    This facilitates the lodging of workers through any 'is_worker_npc_town' root in the graph.
+
+    NOTE: Adding fences to the graph breaks graph planarity!
+    """
+    data = get_clean_exploration_data(config)
+    link_list = [k for k, v in data.items() if v["is_worker_npc_town"]]
+
+    return {
+        "waypoint_key": FENCE_1_KEY,
+        "region_key": FENCE_1_KEY,
+        "region_group_key": FENCE_1_KEY,
+        "territory_key": FENCE_1_KEY,
+        "character_key": FENCE_1_KEY,
+        "node_type": 1,
+        "is_town": False,
+        "is_base_town": False,
+        "is_plantzone": True,
+        "is_workerman_plantzone": True,
+        "is_warehouse_town": False,
+        "is_worker_npc_town": False,
+        "need_exploration_point": 0,
+        "position": {"x": 0.0, "y": 0.0, "z": 0.0},
+        "link_list": link_list,
+        "worker_types": [2],
+        "region_houseinfo": {
+            "has_rentable_lodging": False,
+            "has_rentable_storage": False,
+            "has_cashproduct_lodging": False,
+            "has_cashproduct_storage": False,
+        },
+    }
 
 
 def get_super_root(config: dict) -> dict:

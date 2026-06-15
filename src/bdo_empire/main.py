@@ -12,7 +12,6 @@ import customtkinter as ctk
 from CTkToolTip import CTkToolTip as ctktt
 from psutil import cpu_count
 
-import bdo_empire.data_store as ds
 from bdo_empire.api_common import set_logger
 from bdo_empire.generate_graph_data import generate_graph_data
 from bdo_empire.generate_reference_data import generate_reference_data, get_region_lodging_bounds_costs
@@ -273,15 +272,22 @@ class EmpireOptimizerApp(ctk.CTk):
 
     def load_node_name_lookup(self):
         import bdo_empire.data_store as ds
+        from bdo_empire.api_common import FENCE_1_KEY
+
         try:
             explore_name_map = ds.read_strings_csv("explore.csv")
             exploration_data = ds.read_json("exploration.json")
-            return {
+            entries = {
                 int(node_data["waypoint_key"]): explore_name_map.get(
                     node_data["waypoint_key"], f"Unknown {node_data['waypoint_key']}"
                 )
                 for node_data in exploration_data.values()
             }
+
+            for i in range(10):
+                entries[FENCE_1_KEY + i] = "Farming Fence"
+
+            return entries
         except Exception as e:  # noqa: BLE001
             print(f"Failed to load node names: {e}")
             return {}
@@ -858,6 +864,8 @@ class EmpireOptimizerApp(ctk.CTk):
 
     def _optimize_worker(self):
         print("Begin optimization...")
+        from bdo_empire.api_common import FARMING_WORKER_SILVER_PER_DAY_KEY
+
         self.solver_controller = SolverController()
 
         self.optimize_state = WidgetState.Running
@@ -869,6 +877,11 @@ class EmpireOptimizerApp(ctk.CTk):
         config["solver"] = solver_config
 
         prices = json.loads(Path(self.prices_entry.get()).read_text(encoding="utf-8"))["effectivePrices"]
+        farming_silver_per_day = json.loads(Path(self.prices_entry.get()).read_text(encoding="utf-8"))[
+            FARMING_WORKER_SILVER_PER_DAY_KEY
+        ]
+        prices[FARMING_WORKER_SILVER_PER_DAY_KEY] = farming_silver_per_day
+
         modifiers = {}
         if self.modifiers_entry.get():
             data = json.loads(Path(self.modifiers_entry.get()).read_text(encoding="utf-8"))
