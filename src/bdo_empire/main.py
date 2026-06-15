@@ -25,7 +25,7 @@ optimize_config = {
     "budget": 0,
     "top_n": 6,
     "nearest_n": 7,
-    "max_waypoint_ub": 17,
+    "max_waypoint_ub": 30,
     "solver_config": {},
 }
 
