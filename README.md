@@ -44,6 +44,11 @@ optimal solution if you let it run for ~30 minutes.
 Using pipx: `pipx install bdo-empire`  
 Using pip: `pip install bdo-empire`
 
+## Updating to latest version
+
+Using pipx: `pipx upgrade bdo-empire`  
+Using pip: `pip install bdo-empire -U`
+
 ## Usage
 
 **Requirements**
