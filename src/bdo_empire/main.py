@@ -181,7 +181,10 @@ class EmpireOptimizerApp(ctk.CTk):
         self.forced_taken_button.grid(row=row, column=1, padx=0, pady=10)
         self.forced_taken_status = ctk.CTkLabel(self, text=self.forced_taken_state.name)
         self.forced_taken_status.grid(row=row, column=3, padx=0, pady=10)
-        ctktt(self.forced_taken_button, message="Setup forced_taken/trade nodes.")
+        ctktt(
+            self.forced_taken_button,
+            message="Setup nodes that are forced active (connect to least cost town) e.g. for grinding droprate",
+        )
 
         row += 1
         self.modifiers_label = ctk.CTkLabel(self, text="Modifiers")
