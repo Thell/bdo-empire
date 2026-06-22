@@ -38,7 +38,7 @@ def generate_workerman_json(workers, data, lodging):
         "farmingEnable": False,
         "farmingProfit": 0,
         "farmingBareProfit": 0,
-        "forcedTakenList": data["force_active_node_ids"],
+        "grindTakenList": data["force_active_node_ids"],
     }
     return workerman_json
 
