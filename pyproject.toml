@@ -6,14 +6,14 @@ authors = [{ name = "Thell 'Bo' Fowler", email = "thell@tbfowler.net" }]
 
 dependencies = [
     "bidict>=0.23.1",
-    "certifi>=2026.5.20",
+    "certifi>=2026.6.17",
     "CTkToolTip>=0.8",
     "customtkinter>=6.0.0",
-    "highspy>=1.14.0",
+    "highspy>=1.15.0",
     "loguru>=0.7.3",
     "natsort>=8.4.0",
     "psutil>=7.2.2",
-    "rustworkx>=0.17.1",
+    "rustworkx>=0.18.0",
     "tabulate>=0.10.0",
     "urllib3>=2.7.0",
 ]
