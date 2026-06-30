@@ -2,6 +2,7 @@
 
 import ast
 import json
+import signal
 from enum import Enum
 from math import inf
 from pathlib import Path
@@ -10,7 +11,6 @@ from tkinter import ACTIVE, DISABLED, END, NORMAL, Listbox, filedialog
 
 import customtkinter as ctk
 from CTkToolTip import CTkToolTip as ctktt
-from psutil import cpu_count
 
 from bdo_empire.api_common import set_logger
 from bdo_empire.generate_graph_data import generate_graph_data
@@ -18,6 +18,9 @@ from bdo_empire.generate_reference_data import generate_reference_data, get_regi
 from bdo_empire.generate_workerman_data import generate_workerman_data
 from bdo_empire.optimize_highspy import optimize as optimize_highspy
 from bdo_empire.solver_highspy import SolverController
+
+# Ignore SIGINT so when users try to cancel the solve they don't inadvertently kill the app
+signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 optimize_config = {
     "name": "Empire",
@@ -30,20 +33,20 @@ optimize_config = {
 
 
 solver_config = {
-    "num_processes": max(1, cpu_count(logical=False) - 1),  # concurrent HiGHs processes
     "mip_rel_gap": 1e-4,
     "mip_feasibility_tolerance": 1e-4,
     "primal_feasibility_tolerance": 1e-4,
-    "random_seed": 0,
+    "random_seed": 123456789,
     "time_limit": inf,
     "mip_improvement_timeout": inf,
     "mip_heuristic_run_root_reduced_cost": True,
-    "threads": 1,  # HiGHs internal parallelism
-    "log_to_console": False,  # HiGHs logger callback is distinct from console logging.
+    "parallel": "on",
+    "threads": 0,  # HiGHs internal parallelism - auto-determined if 0
+    "log_to_console": True,
+    "mip_min_logging_interval": 30,
 }
 
 solver_config_descriptions = {
-    "num_processes": "Number of processes to use.",
     "mip_rel_gap": "Relative gap tolerance between MIP objective and upper bound.",
     "mip_feasibility_tolerance": "Tolerance for MIP feasibility.",
     "primal_feasibility_tolerance": "Tolerance for primal feasibility.",
@@ -51,6 +54,10 @@ solver_config_descriptions = {
     "time_limit": "Global time limit regardless of MIP improvement.",
     "mip_improvement_timeout": "MIP timeout after last improvement.",
     "mip_heuristic_run_root_reduced_cost": "Run MIP reduced cost heuristic on root node. (Recommend 'False' on sub 300 budget empires.)",
+    "parallel": "Use HiGHs parallelism.",
+    "threads": "Number of threads to use. (0 = auto-detect)",
+    "log_to_console": "Log to console.",
+    "mip_min_logging_interval": "MIP logging interval.",
 }
 
 
@@ -833,7 +840,10 @@ class EmpireOptimizerApp(ctk.CTk):
     def config_solver(self):
         config_window = ctk.CTkToplevel(self)
         config_window.title("Solver Configuration")
-        config_window.geometry("400x320")
+
+        num_entries = len(solver_config)
+        height = num_entries * 40
+        config_window.geometry(f"400x{height}")
         config_window.update()
         config_window.grab_set()
 
@@ -860,6 +870,8 @@ class EmpireOptimizerApp(ctk.CTk):
                 if setting in int_fields
                 else ast.literal_eval(value)
                 if value in ["True", "False"]
+                else value
+                if value in ["on", "off", "choose"]
                 else float(value)
             )
         config_window.destroy()

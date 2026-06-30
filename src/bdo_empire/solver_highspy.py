@@ -1,18 +1,10 @@
 # solver_highspy.py
-import queue
-import re
+
 import time
-from dataclasses import dataclass
 from math import inf
-from threading import Event, Lock, Thread
+from threading import Event, Thread
 
-import numpy as np
-import psutil
-from highspy import Highs, ObjSense
-from loguru import logger
-from numpy.typing import NDArray
-
-TIME_AND_NEWLINE_PATTERN = re.compile(r"(\d+\.\d+s)\n$")
+from highspy import Highs
 
 
 class SolverController:
@@ -41,9 +33,6 @@ class TimeoutTimer(Thread):
     def run(self):
         while self.running:
             reset_triggered = self.reset_event.wait(self.timeout_seconds)
-            if not self.running:
-                break
-
             if reset_triggered:
                 self.reset_event.clear()
             else:
@@ -59,266 +48,52 @@ class TimeoutTimer(Thread):
         self.reset_event.set()
 
 
-@dataclass
-class Incumbent:
-    id: int
-    lock: Lock
-    value: float
-    solution: np.ndarray
-    provided: list[bool]
-
-
-def validate_and_coerce_solution(
-    raw_solution,
-    expected_len: int,
-    min_nonzero_fraction: float = 0.01,  # optional sanity check
-) -> NDArray | None:
-    """
-    Return True only if the solution from HiGHS callback looks valid.
-    Logs a warning and returns False otherwise.
-    """
-    if raw_solution is None:
-        logger.warning("Received None as mip_solution from HiGHS callback.")
-        return None
-
-    try:
-        # Convert safely to numpy (handles lists, memoryviews, empty arrays, etc.)
-        sol = np.asarray(raw_solution, dtype=float)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(f"Failed to convert mip_solution to array: {e}")
-        return None
-
-    if sol.ndim != 1 or len(sol) != expected_len:
-        logger.debug(
-            f"Dimension mismatch: expected ({expected_len},), received shape {sol.shape} from HiGHS callback."
-        )
-        return None
-
-    # Optional extra sanity check: skip obviously bogus all-zero solutions
-    # (adjust or remove if your model can legitimately have many zeros)
-    if expected_len > 50 and np.allclose(sol, 0):
-        nonzero_count = np.count_nonzero(np.abs(sol) > 1e-8)
-        if nonzero_count < expected_len * min_nonzero_fraction:
-            logger.debug(
-                f"Suspicious all-zero (or near-zero) solution received "
-                f"({nonzero_count}/{expected_len} nonzeros). Skipping."
-            )
-            return None
-
-    return sol
-
-
 def solve(model: Highs, config: dict, controller: SolverController) -> Highs:
-    if controller is None:
-        controller = SolverController()
+    """Solve a MIP problem using Highs with custom interrupt and timeout controllers."""
 
-    timeout_controller = None
-    mip_improvement_timeout = config.get("mip_improvement_timeout", None)
-    if mip_improvement_timeout is not None and mip_improvement_timeout != inf and mip_improvement_timeout > 0:
-        timeout_controller = TimeoutTimer(mip_improvement_timeout, controller.stop)
-        timeout_controller.start()
-
-    # Unless specified use physical cores - 1 because when all are used the
-    # system operations (like the UI) causes more HiGHs thread context switches
-    physical_cpu_count = psutil.cpu_count(logical=False)
-    physical_cpu_count = 1 if physical_cpu_count is None else max(2, physical_cpu_count) - 1
-    num_processes = config.get("solver", {}).get("num_processes", physical_cpu_count)
-    num_processes = max(num_processes, 1)
-    if num_processes > 1:
-        model.setOptionValue("threads", 1)  # HiGHs internal threads
-    logger.info(f"Using {num_processes} threads")
-
-    # Reduce the amount of logging (still captures all important messages)
-    model.setOptionValue("mip_min_logging_interval", 30)
-
-    # UI provided user options
-    options = {k: v for k, v in config.get("solver", {}).items()}
+    # Non-standard HiGHS options need filtering...
+    filtered_options = {"mip_improvement_timeout"}
+    options = {k: v for k, v in config.get("solver", {}).items() if k not in filtered_options}
     for option_name, option_value in options.items():
-        # Non-standard HiGHS options need filtering...
-        # Don't pass threads since we are controlling the concurrent processes from the outside and already set thread count
-        # Don't pass num_processes since we are controlling the concurrent processes from the outside
-        # Don't pass mip_improvement_timeout and do_not_use_mip_heuristic since they aren't real HiGHS options
-        if option_name not in [
-            "threads",
-            "num_processes",
-            "mip_improvement_timeout",
-            "do_not_use_mip_heuristic",
-        ]:
-            model.setOptionValue(option_name, option_value)
+        model.setOptionValue(option_name, option_value)
 
-    clones = [model] + [Highs() for _ in range(num_processes - 1)]
-    clones[0].HandleUserInterrupt = True
-    clones[0].enableCallbacks()
-
-    for i in range(1, num_processes):
-        clones[i].passOptions(clones[0].getOptions())
-        clones[i].passModel(clones[0].getModel())
-        clones[i].setOptionValue("random_seed", i)
-        clones[i].HandleUserInterrupt = True
-        clones[i].enableCallbacks()
-
-    clone_capture_report = [False] * num_processes
-    clone_solution_report = [[] for _ in range(num_processes)]
-
-    obj_sense = clones[0].getObjectiveSense()[1]
-    if obj_sense == ObjSense.kMinimize:
-
-        def is_better(a, b):
-            return a < b
-
-    else:
-
-        def is_better(a, b):
-            return a > b
-
-    incumbent = Incumbent(
-        id=0,
-        lock=Lock(),
-        value=2**31 if obj_sense == ObjSense.kMinimize else -(2**31),
-        solution=np.zeros(clones[0].getNumCol()),
-        provided=[False] * num_processes,
-    )
-
-    # Queues and managers
-    incumbent_queue = queue.Queue()
-    logging_queue = queue.Queue()
-    result_queue = queue.Queue()
-    stop_event = Event()
-
-    def logging_manager():
-        """Consume logging events and capture final reports into clone_solution_report."""
-        # The final report is captured here but written to stdout prior to exiting the main function.
-        while not stop_event.is_set():
-            try:
-                e = logging_queue.get(timeout=0.1)
-            except queue.Empty:
-                continue
-
-            clone_id = int(e.user_data)
-
-            is_solution_report = e.message.startswith("\nSolving report")
-            if is_solution_report:
-                # NOTE: all future messages from this thread are part of its solving report
-                clone_capture_report[clone_id] = True
-
-            if clone_capture_report[clone_id]:
-                message = e.message.replace("Solving report", f"Solving report for thread {clone_id}")
-                clone_solution_report[clone_id].append(message)
-            elif clone_id == incumbent.id:
-                # Only print messages for the incumbent thread
-                replacement = r"\1 " + str(clone_id) + r"\n"
-                print(TIME_AND_NEWLINE_PATTERN.sub(replacement, e.message), end="")
-
-    def incumbent_manager():
-        """Process improved-solution events and update the incumbent state."""
-        nonlocal incumbent
-        while not stop_event.is_set():
-            try:
-                e = incumbent_queue.get(timeout=0.025)
-            except queue.Empty:
-                continue
-            except Exception as qe:  # noqa: BLE001
-                logger.error(f"Queue error in incumbent_manager: {qe}")
-                continue
-
-            try:
-                value = e.data_out.objective_function_value
-                if not is_better(value, incumbent.value):
-                    continue
-
-                incoming_solution = validate_and_coerce_solution(
-                    e.data_out.mip_solution, expected_len=len(incumbent.solution)
-                )
-                if incoming_solution is None:
-                    continue
-
-                clone_id = int(e.user_data)
-                with incumbent.lock:
-                    incumbent.value = value
-                    incumbent.solution[:] = incoming_solution
-                    incumbent.provided = [False] * num_processes
-                    incumbent.provided[clone_id] = True
-                    incumbent.id = clone_id
-
-                if timeout_controller is not None:
-                    timeout_controller.reset()
-
-            except Exception as ex:  # noqa: BLE001
-                logger.debug(
-                    f"Unexpected error processing incumbent from clone {getattr(e, 'user_data', '?')}: {ex}",
-                    exc_info=True,
-                )
-
-    def cbLoggingHandler(e):
-        logging_queue.put_nowait(e)
-
-    def cbMIPImprovedSolutionHandler(e):
-        incumbent_queue.put_nowait(e)
+    # Callback Handlers
+    # NOTE: By default the tkinter app intercepts SIGINT and cancels the main thread,
+    #       which we don't want to happen just to stop the solver, so the main app is
+    #       set to ignore SIGINT. This also means HiGHS won't get a ctrl-c interrupt.
+    #       So the only way to stop the solve is to click the stop button, timeout, or
+    #       complete the solve.
+    model.enableCallbacks()
 
     def cbMIPInterruptHandler(e):
         nonlocal controller
         if controller.is_interrupted():
             e.interrupt()
 
-    def cbMIPUserSolutionHandler(e):
-        """Update clones to best solution found so far..."""
-        clone_id = int(e.user_data)
-        if not incumbent.provided[clone_id] and is_better(  # noqa: SIM102
-            incumbent.value, e.data_out.objective_function_value
-        ):
-            # Skip rather than block: the callback will be called again
-            if incumbent.lock.acquire(blocking=False):
-                e.data_in.user_has_solution = True
-                e.data_in.user_solution[:] = incumbent.solution
-                incumbent.provided[clone_id] = True
-                incumbent.lock.release()
+    model.cbMipInterrupt.subscribe(cbMIPInterruptHandler)
 
-    for i in range(num_processes):
-        if config.get("solver", {}).get("log_via_callback", True):
-            clones[i].cbLogging.subscribe(cbLoggingHandler, i)
-        clones[i].cbMipImprovingSolution.subscribe(cbMIPImprovedSolutionHandler, i)
-        clones[i].cbMipInterrupt.subscribe(cbMIPInterruptHandler, i)
-        clones[i].cbMipUserSolution.subscribe(cbMIPUserSolutionHandler, i)
-
-    # Main Section
-    def worker_task(clone: Highs, i: int):
-        clone.solve()
-        value = clone.getObjectiveValue()
-        if value == incumbent.value or is_better(value, incumbent.value):
-            result_queue.put(i)
-
-    # Manager threads must be started first
-    Thread(target=logging_manager, daemon=True).start()
-    Thread(target=incumbent_manager, daemon=True).start()
-
-    for i in range(num_processes):
-        Thread(target=worker_task, args=(clones[i], i), daemon=True).start()
-        time.sleep(0.1)
-
-    first_to_finish = None
-    while first_to_finish is None:
-        try:
-            # NOTE: timeout allows for Highs interrupt handling.
-            first_to_finish = result_queue.get(timeout=0.1)
-        except queue.Empty:
-            continue
-
-    # Cancel the other threads, without any further output
-    for i in range(num_processes):
-        if i != first_to_finish:
-            clones[i].silent()
-        clones[i].cancelSolve()
-
-    # Allow managers to consume final events before stopping
-    time.sleep(0.1)
-    stop_event.set()
-
-    # Print solution report
-    for message in clone_solution_report[first_to_finish]:
-        print(message, end="")
-    print()
+    mip_improvement_timeout = config.get("mip_improvement_timeout", inf)
+    if mip_improvement_timeout > 0 and mip_improvement_timeout < inf:
+        timeout_controller = TimeoutTimer(mip_improvement_timeout, controller.stop)
+        timeout_controller.start()
+    else:
+        timeout_controller = None
 
     if timeout_controller is not None:
-        timeout_controller.shutdown()
 
-    return clones[first_to_finish]
+        def cbMIPImprovingSolutionHandler(e):
+            timeout_controller.reset()
+
+        model.cbMipImprovingSolution.subscribe(cbMIPImprovingSolutionHandler)
+
+    # Solve it!
+    try:
+        highs_thread = Thread(target=model.solve, daemon=True)
+        highs_thread.start()
+        while highs_thread.is_alive():
+            time.sleep(0.1)
+    finally:
+        if timeout_controller is not None:
+            timeout_controller.shutdown()
+
+    return model
