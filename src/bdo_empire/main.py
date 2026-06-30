@@ -524,14 +524,13 @@ class EmpireOptimizerApp(ctk.CTk):
             status_label.grid(row=row, column=4, padx=10, pady=5)
 
             # The ISO_Left_tab is there for linux and Shift-KeyPress-Tab for windows
-            for ev in ("<Tab>", "<Shift-KeyPress-Tab>", "<ISO_Left_Tab>"):
+            events = ["<Tab>", "<Shift-KeyPress-Tab>", "<ISO_Left_Tab>"]
+            if self.tk.call("tk", "windowingsystem") == "win32":
+                events.remove("<ISO_Left_Tab>")
+
+            for ev in events:
                 bonus_entry.bind(ev, make_scroll_binder(bonus_entry))
                 reserved_entry.bind(ev, make_scroll_binder(reserved_entry))
-
-            bonus_entry.bind("<FocusOut>", make_validate_handler(bonus_var, status_label, prepaid_var, town))
-            reserved_entry.bind(
-                "<FocusOut>", make_validate_handler(reserved_var, status_label, prepaid_var, town)
-            )
 
             self.lodging_entries[town] = {
                 "bonus": bonus_var,
