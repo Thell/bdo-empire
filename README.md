@@ -31,10 +31,9 @@ are desired the `main.py` source can be edited such that `optimize_config`
 this with caution because the runtime can and will increase to multiple hours.
 
 **NOTE:**  Every change in input or options can alter the runtime! There is no
-real average but empirically budgets of ~350 or ~600 take the longest and all
-of the bench cases for v0.7.0 completed in < 1h15m when testing every
-increment of 25 from 50 to 625. The vast majority of those completed nearer to
-20 minutes or less. Good luck, be patient, and if needed use the 'stop'
+real average . All of the individual bench cases for v0.8.0 completed in < 1h20m
+when testing every increment of 25 from 50 to 625. The majority of those
+completed < 10 minutes. Good luck, be patient, and if needed use the 'stop'
 button to use the best solution found so far which is usually the resulting
 optimal solution if you let it run for ~30 minutes.
 
