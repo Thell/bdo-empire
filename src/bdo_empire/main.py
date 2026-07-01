@@ -862,7 +862,7 @@ class EmpireOptimizerApp(ctk.CTk):
         config_window.protocol("WM_DELETE_WINDOW", lambda: self.save_config_data(config_window))
 
     def save_config_data(self, config_window):
-        int_fields = ["num_processes", "random_seed"]
+        int_fields = ["random_seed", "threads"]
         for setting, var in self.config_entries.items():
             value = var.get()
             solver_config[setting] = (
