@@ -53,7 +53,7 @@ def make_workerman_worker(town_id: int, origin_id: int, worker_data: dict, stash
     worker = {
         "tnk": town_id,
         "charkey": str(worker_data["charkey"]),
-        "label": "default",
+        "label": f"{int(worker_data['value'])}",
         "level": 40,
         "wspdSheet": worker_data["wspd"],
         "mspdSheet": worker_data["mspd"],
@@ -270,6 +270,7 @@ def generate_workerman_workers(G: PyDiGraph, terminal_sets: dict, data: dict):
         else:
             prize_data = data["plant_values"][terminal_key][root_data["region_key"]]
             worker_data = prize_data["worker_data"]
+            worker_data["value"] = prize_data["value"]
 
         user_worker = make_workerman_worker(root_key, terminal_key, worker_data, stash_town_id)
         workerman_user_workers.append(user_worker)
