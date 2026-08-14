@@ -92,6 +92,7 @@ lodging_specifications = {
     "Godu Village": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
     "Bukpo": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 6},
     "Hakinza Sanctuary": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 7},
+    "Angavu Outpost": {"bonus": 0, "reserved": 0, "prepaid": 0, "bonus_ub": 0},
 }
 
 

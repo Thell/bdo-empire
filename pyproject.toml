@@ -1,19 +1,19 @@
 [project]
 name = "bdo-empire"
-version = "0.8.1"
+version = "0.8.2"
 description = "Worker empire optimizer for BDO using HiGHS mip solver."
 authors = [{ name = "Thell 'Bo' Fowler", email = "thell@tbfowler.net" }]
 
 dependencies = [
     "bidict>=0.23.1",
-    "certifi>=2026.6.17",
+    "certifi>=2026.7.22",
     "CTkToolTip>=0.8",
     "customtkinter>=6.0.0",
-    "highspy>=1.15.0",
+    "highspy>=1.15.1",
     "loguru>=0.7.3",
     "natsort>=8.4.0",
     "psutil>=7.2.2",
-    "rustworkx>=0.18.0",
+    "rustworkx>=0.18.1",
     "tabulate>=0.10.0",
     "urllib3>=2.7.0",
 ]
@@ -29,7 +29,7 @@ empire-optimizer = "bdo_empire.main:main"
 package = true
 
 [dependency-groups]
-dev = ["twine>=6.1.0"]
+dev = ["twine>=7.0.0"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
