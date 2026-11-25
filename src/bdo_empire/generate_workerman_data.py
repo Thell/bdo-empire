@@ -167,6 +167,7 @@ def generate_graph(G: PyDiGraph, model: Highs, vars: dict, data: dict):
         fence_ids = data["farm_fence_keys"]
         farmingWorkerSilerPerDay = data["farmingWorkerSilverPerDay"]
         num_farm_fences = data["num_farm_fences"]
+        base_farm_count = sum(vars.get("base_farm_counts", {}).values())
 
         roots_assigned_fences = []
         for r, v in vars["farm_r"].items():
@@ -174,15 +175,17 @@ def generate_graph(G: PyDiGraph, model: Highs, vars: dict, data: dict):
             roots_assigned_fences.extend([r] * count)
 
         num_assigned_fences = len(roots_assigned_fences)
-        if num_assigned_fences > num_farm_fences:
-            logger.error(f"Too many assigned fences: {len(roots_assigned_fences)} > {len(fence_ids)}")
+        total_assigned_fences = base_farm_count + num_assigned_fences
+        if total_assigned_fences > num_farm_fences:
+            logger.error(f"Too many assigned fences: {total_assigned_fences} > {len(fence_ids)}")
             raise ValueError("Too many assigned fences... model is broken.")
-        elif num_assigned_fences < num_farm_fences:
-            unassigned_count = len(fence_ids) - num_assigned_fences
+        elif total_assigned_fences < num_farm_fences:
+            unassigned_count = len(fence_ids) - total_assigned_fences
             logger.warning(f"There are {unassigned_count} unassigned fences.")
 
         ref_fence_node = get_fence({})
-        for r, f in zip(roots_assigned_fences, fence_ids):
+        available_fence_ids = fence_ids[base_farm_count:]
+        for r, f in zip(roots_assigned_fences, available_fence_ids):
             fence_node = copy.deepcopy(ref_fence_node)
             fence_node["waypoint_key"] = f
             fence_node["region_key"] = G[r]["region_key"]
@@ -298,7 +301,7 @@ def print_summary(
 
     # Remove any terminal sets that are already in the base empire.
     if data["base_empire"] is not None:
-        prev_terminals_sets = extract_base_empire(G, data["base_empire"])
+        prev_terminals_sets, _ = extract_base_empire(G, data["base_empire"])
         terminal_sets = {t: r for t, r in terminal_sets.items() if t not in prev_terminals_sets}
 
     # Remove any super terminal, super root pairs.

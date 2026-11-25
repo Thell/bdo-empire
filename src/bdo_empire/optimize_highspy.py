@@ -28,6 +28,9 @@ def create_model(
 
     farm_fence_value = G.attrs.get("farm_fence_value")
     num_farm_fences = G.attrs.get("num_farm_fences")
+    base_farm_counts = G.attrs.get("base_farm_counts", {})
+    base_farm_count = sum(base_farm_counts.values())
+    available_farm_fences = num_farm_fences - base_farm_count
     logger.info(f"  Modelling with a farm fence value of {farm_fence_value} and {num_farm_fences} fences.")
 
     roots_indices = G.attrs["root_indices"]
@@ -74,11 +77,11 @@ def create_model(
 
     # Farming assignment selector for each root.
     # Farming workers consume lodging capacity but do not participate in the network flow.
-    # The optimizer may choose to allocate up to num_farming_fences workers across roots.
+    # The optimizer may allocate any remaining fences across roots.
     farm_r = {}
-    if num_farm_fences:
+    if available_farm_fences:
         for r in roots_indices:
-            farm_r[r] = model.addIntegral(lb=0, ub=num_farm_fences)
+            farm_r[r] = model.addIntegral(lb=0, ub=available_farm_fences)
 
     # Flow for root on arc (i,j); when root can transit from i to j
     f_r = {}
@@ -137,12 +140,12 @@ def create_model(
         for t in super_terminal_indices:
             model.addConstr(x_t_r[(t, super_root_index)] == 1)
             model.addConstr(x[t] == 1)
-    if num_farm_fences:
-        # A maximum of num_farming_fences may be assigned in total.
+    if available_farm_fences:
         # This assignment does not require any transit through the root, nor
         # does it require any exploration point accounting within the model,
         # it alters the model only through its usage of capacity.
-        model.addConstr(model.qsum(farm_r[r] for r in roots_indices) <= num_farm_fences)
+        # NOTE: Base empire farmer workers already use the remaining farming fences.
+        model.addConstr(model.qsum(farm_r[r] for r in roots_indices) <= available_farm_fences)
 
     # Ranked basins cuts
     basins = G.attrs.get("basins", {})
@@ -202,10 +205,12 @@ def create_model(
                     selected_capacity = model.qsum(c_r[(c, r)] for c in range(len(capacity_costs)))
                     model.addConstr(selected_capacity == 1)
 
-                    # The selected capacity must be equal to inflow assigned and the farming fences assigned
+                    # The selected capacity must fit the assigned and farming workers.
                     capacity_limit = model.qsum(c * c_r[(c, r)] for c in range(len(capacity_costs)))
-                    if num_farm_fences:
-                        model.addConstr(in_flow + farm_r[r] == capacity_limit)
+                    if available_farm_fences or base_farm_count:
+                        model.addConstr(
+                            in_flow + farm_r.get(r, 0) + base_farm_counts.get(r, 0) == capacity_limit
+                        )
                     else:
                         model.addConstr(in_flow == capacity_limit)
                 else:
@@ -259,9 +264,11 @@ def optimize(
     assert isinstance(G, PyDiGraph)
 
     if data["base_empire"] is not None:
-        prev_terminals_sets = extract_base_empire(G, data["base_empire"])
+        prev_terminals_sets, base_farm_counts = extract_base_empire(G, data["base_empire"])
     else:
         prev_terminals_sets = {}
+        base_farm_counts = {}
+    G.attrs["base_farm_counts"] = base_farm_counts
 
     print(
         f"\nSolving:  graph with {G.num_nodes()} nodes and {G.num_edges()} arcs"
@@ -270,6 +277,7 @@ def optimize(
 
     print("Creating mip model...")
     model, vars = create_model(G, data["config"], prev_terminals_sets=prev_terminals_sets)
+    vars["base_farm_counts"] = base_farm_counts
 
     print("Solving mip problem...")
     model = solve(model, data["config"], controller)

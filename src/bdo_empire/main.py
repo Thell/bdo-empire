@@ -7,12 +7,12 @@ from enum import Enum
 from math import inf
 from pathlib import Path
 from threading import Thread
-from tkinter import ACTIVE, DISABLED, END, NORMAL, Listbox, filedialog
+from tkinter import ACTIVE, DISABLED, END, NORMAL, Listbox, filedialog, messagebox
 
 import customtkinter as ctk
 from CTkToolTip import CTkToolTip as ctktt
 
-from bdo_empire.api_common import set_logger
+from bdo_empire.api_common import FENCE_1_KEY, base_empire_farm_worker_count, set_logger
 from bdo_empire.generate_graph_data import generate_graph_data
 from bdo_empire.generate_reference_data import generate_reference_data, get_region_lodging_bounds_costs
 from bdo_empire.generate_workerman_data import generate_workerman_data
@@ -138,6 +138,7 @@ class EmpireOptimizerApp(ctk.CTk):
         self.outpath_state = WidgetState.Required
         self.optimize_state = WidgetState.Waiting
         self.baseempire_state = WidgetState.Optional
+        self.baseempire_fence_conflict = False
 
         self.config_entries = {}
         self.forced_taken_entries = {}
@@ -210,6 +211,9 @@ class EmpireOptimizerApp(ctk.CTk):
         self.baseempire_label = ctk.CTkLabel(self, text="Base Empire")
         self.baseempire_label.grid(row=row, column=0, padx=10, pady=10)
         self.baseempire_entry = ctk.CTkEntry(self, width=300)
+        self.baseempire_entry.bind(
+            "<FocusOut>", lambda event: self.validate_baseempire(self.baseempire_entry.get())
+        )
         self.baseempire_entry.grid(row=row, column=1, padx=10, pady=10)
         self.baseempire_button = ctk.CTkButton(self, text="Browse", command=self.browse_baseempire)
         self.baseempire_button.grid(row=row, column=2, padx=10, pady=10)
@@ -305,6 +309,7 @@ class EmpireOptimizerApp(ctk.CTk):
 
     def setup_forced_taken(self):
         forced_taken_window = ctk.CTkToplevel(self)
+        self.forced_taken_window = forced_taken_window
         forced_taken_window.title("Setup forced_taken Nodes")
         forced_taken_window.geometry("800x500")
         forced_taken_window.update()
@@ -354,6 +359,8 @@ class EmpireOptimizerApp(ctk.CTk):
         self.forced_taken_entries["keys"].append(key)
         self.available_listbox.delete(index)
         self.selected_listbox.insert(END, item_text)
+        self.update_base_empire_fence_validation()
+        self.update_optimize_button_state()
 
     def deselect_forced_taken_node(self, _event=None):
         selection = self.selected_listbox.curselection()
@@ -366,6 +373,8 @@ class EmpireOptimizerApp(ctk.CTk):
         self.forced_taken_entries["keys"].remove(key)
         self.selected_listbox.delete(index)
         self.available_listbox.insert(END, item_text)
+        self.update_base_empire_fence_validation()
+        self.update_optimize_button_state()
 
     def update_forced_taken_filter(self, _event=None):
         search = self.search_var.get().lower()
@@ -418,6 +427,8 @@ class EmpireOptimizerApp(ctk.CTk):
             self.forced_taken_status.configure(text=self.forced_taken_state.name, text_color=default_color)
 
         self.forced_taken_status.update()
+        self.update_base_empire_fence_validation()
+        self.update_optimize_button_state()
 
     def import_forced_taken(self):
         path = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json")])
@@ -430,8 +441,14 @@ class EmpireOptimizerApp(ctk.CTk):
             self.forced_taken_entries["keys"].clear()
             self.selected_listbox.delete(0, END)
 
+            key_to_label = dict(self.all_nodes)
             for key in keys:
-                self.add_node_to_selected_nodes(key)
+                if key in key_to_label and key not in self.forced_taken_entries["keys"]:
+                    self.forced_taken_entries["keys"].append(key)
+
+            self.forced_taken_entries["keys"].sort(key=lambda k: key_to_label[k])
+            self.refresh_selected_nodes()
+            self.update_forced_taken_filter()
 
             self.forced_taken_status.configure(text="Imported")
         except Exception:  # noqa: BLE001
@@ -620,8 +637,8 @@ class EmpireOptimizerApp(ctk.CTk):
             return
 
         try:
-            bonus = int(self.lodging_entries[town]["bonus"].get())  # ty:ignore[unresolved-attribute]
-            reserved = int(self.lodging_entries[town]["reserved"].get())  # ty:ignore[unresolved-attribute]
+            bonus = int(self.lodging_entries[town]["bonus"].get())  # ty: ignore[missing-union-attribute]
+            reserved = int(self.lodging_entries[town]["reserved"].get())  # ty: ignore[missing-union-attribute]
         except ValueError as e:
             print("ValueError:", e)
             label_widget.configure(text="Invalid", text_color="red")
@@ -676,9 +693,9 @@ class EmpireOptimizerApp(ctk.CTk):
         # Defensive sync from UI in case of stray edits or skipped validations
         for town, lodging_vars in self.lodging_entries.items():
             try:
-                bonus_value = int(lodging_vars["bonus"].get())  # ty:ignore[unresolved-attribute]
-                reserved_value = int(lodging_vars["reserved"].get())  # ty:ignore[unresolved-attribute]
-                prepaid_value = int(lodging_vars["prepaid"].get())  # now stored as text variable  # ty:ignore[unresolved-attribute]
+                bonus_value = int(lodging_vars["bonus"].get())  # ty: ignore[missing-union-attribute]
+                reserved_value = int(lodging_vars["reserved"].get())  # ty: ignore[missing-union-attribute]
+                prepaid_value = int(lodging_vars["prepaid"].get())  # now stored as text variable  # ty: ignore[missing-union-attribute]
 
                 lodging_specifications[town].update({
                     "bonus": bonus_value,
@@ -708,9 +725,9 @@ class EmpireOptimizerApp(ctk.CTk):
                 lodging_specifications.update(loaded_data)
                 for town, value in loaded_data.items():
                     if town in self.lodging_entries:
-                        self.lodging_entries[town]["bonus"].set(value["bonus"])  # ty:ignore[unresolved-attribute]
-                        self.lodging_entries[town]["reserved"].set(value["reserved"])  # ty:ignore[unresolved-attribute]
-                        self.lodging_entries[town]["prepaid"].set(str(value["prepaid"]))  # ty:ignore[unresolved-attribute]
+                        self.lodging_entries[town]["bonus"].set(value["bonus"])  # ty: ignore[missing-union-attribute]
+                        self.lodging_entries[town]["reserved"].set(value["reserved"])  # ty: ignore[missing-union-attribute]
+                        self.lodging_entries[town]["prepaid"].set(str(value["prepaid"]))  # ty: ignore[missing-union-attribute]
                         self.lodging_entries[town]["bonus_ub"] = value["bonus_ub"]
                         self.validate_lodging(
                             self.lodging_entries[town]["bonus"],
@@ -729,9 +746,9 @@ class EmpireOptimizerApp(ctk.CTk):
             export_data = {}
             for town, values in self.lodging_entries.items():
                 try:
-                    bonus = int(values["bonus"].get())  # ty:ignore[unresolved-attribute]
-                    reserved = int(values["reserved"].get())  # ty:ignore[unresolved-attribute]
-                    prepaid = int(values["prepaid"].get())  # ty:ignore[unresolved-attribute]
+                    bonus = int(values["bonus"].get())  # ty: ignore[missing-union-attribute]
+                    reserved = int(values["reserved"].get())  # ty: ignore[missing-union-attribute]
+                    prepaid = int(values["prepaid"].get())  # ty: ignore[missing-union-attribute]
                     bonus_ub = values["bonus_ub"]
                     export_data[town] = {
                         "bonus": bonus,
@@ -812,14 +829,66 @@ class EmpireOptimizerApp(ctk.CTk):
         self.update_optimize_button_state()
 
     def validate_baseempire(self, file_path):
-        if Path(file_path).is_file():
-            self.baseempire_state = WidgetState.Ready
-            self.baseempire_status.configure(text=self.baseempire_state.name, text_color="green")
+        if not file_path:
+            self.baseempire_state = WidgetState.Optional
+            self.baseempire_status.configure(text=self.baseempire_state.name)
+        elif Path(file_path).is_file():
+            try:
+                base_empire = json.loads(Path(file_path).read_text(encoding="utf-8"))
+                base_empire_farm_worker_count(base_empire)
+            except Exception:  # noqa: BLE001
+                self.baseempire_state = WidgetState.Error
+                self.baseempire_status.configure(text=self.baseempire_state.name, text_color="red")
+            else:
+                self.baseempire_state = WidgetState.Ready
+                self.baseempire_status.configure(text=self.baseempire_state.name, text_color="green")
         else:
             self.baseempire_state = WidgetState.Error
             self.baseempire_status.configure(text=self.baseempire_state.name, text_color="red")
+        self.update_base_empire_fence_validation()
         self.baseempire_status.update()
         self.update_optimize_button_state()
+
+    def update_base_empire_fence_validation(self):
+        base_empire_path = self.baseempire_entry.get()
+        if not base_empire_path:
+            self.baseempire_state = WidgetState.Optional
+            self.baseempire_fence_conflict = False
+            self.baseempire_status.configure(text=self.baseempire_state.name)
+            return
+
+        try:
+            base_empire = json.loads(Path(base_empire_path).read_text(encoding="utf-8"))
+            farm_worker_count = base_empire_farm_worker_count(base_empire)
+        except Exception:  # noqa: BLE001
+            self.baseempire_state = WidgetState.Error
+            self.baseempire_fence_conflict = False
+            self.baseempire_status.configure(text=self.baseempire_state.name, text_color="red")
+            return
+
+        farm_fence_count = sum(
+            1 for key in self.forced_taken_entries.get("keys", []) if FENCE_1_KEY <= key < FENCE_1_KEY + 10
+        )
+        if farm_fence_count < farm_worker_count:
+            show_error = not self.baseempire_fence_conflict
+            self.baseempire_state = WidgetState.Error
+            self.baseempire_fence_conflict = True
+            self.baseempire_status.configure(text=self.baseempire_state.name, text_color="red")
+            if show_error:
+                parent = self
+                if hasattr(self, "forced_taken_window") and self.forced_taken_window.winfo_exists():
+                    parent = self.forced_taken_window
+                messagebox.showerror(
+                    "Base Empire Farming Conflict",
+                    f"The base empire has {farm_worker_count} farming worker(s) but only "
+                    f"{farm_fence_count} fence(s) are selected. Add fences in Setup Forced Nodes "
+                    "or remove/change the farming workers in the base empire.",
+                    parent=parent,
+                )
+        else:
+            self.baseempire_state = WidgetState.Ready
+            self.baseempire_fence_conflict = False
+            self.baseempire_status.configure(text=self.baseempire_state.name, text_color="green")
 
     def update_optimize_button_state(self):
         if self.cp_entry.get().isdigit():
@@ -831,6 +900,7 @@ class EmpireOptimizerApp(ctk.CTk):
             and self.lodging_state is not WidgetState.Error
             and self.cp_state is WidgetState.Ready
             and self.outpath_state is WidgetState.Ready
+            and self.baseempire_state is not WidgetState.Error
         ):
             self.optimize_state = WidgetState.Ready
             self.optimize_button.configure(state=NORMAL)
@@ -904,11 +974,11 @@ class EmpireOptimizerApp(ctk.CTk):
 
         forcedTakenList = self.forced_taken_entries.get("keys", [])
         data = generate_reference_data(config, prices, modifiers, lodging_specifications, forcedTakenList)
-        data = generate_graph_data(data)
         if self.baseempire_entry.get():
             data["base_empire"] = json.loads(Path(self.baseempire_entry.get()).read_text(encoding="utf-8"))
         else:
             data["base_empire"] = None
+        data = generate_graph_data(data)
 
         highs_results = optimize_highspy(data, self.solver_controller)
         workerman_json = generate_workerman_data(highs_results, lodging_specifications, data)

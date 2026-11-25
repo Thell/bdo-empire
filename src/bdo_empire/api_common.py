@@ -69,20 +69,36 @@ def get_clean_exploration_data(config: dict):
     return data
 
 
-def extract_base_empire(G: PyDiGraph, base_empire: dict):
+def base_empire_farm_worker_count(base_empire: dict) -> int:
+    return sum(1 for worker in base_empire["userWorkers"] if worker.get("job") == "farming")
+
+
+def extract_base_empire(G: PyDiGraph, base_empire: dict) -> tuple[dict, dict]:
     node_key_by_index = G.attrs["node_key_by_index"]
     prev_terminals_sets = {}
+    base_farm_counts = {}
 
-    user_workers = base_empire["userWorkers"]
-    for worker in user_workers:
+    for worker in base_empire["userWorkers"]:
         tnk_value = worker.get("tnk")  # town id (root waypoint_key)
-        job_data = worker.get("job", {})
+        job_data = worker.get("job")
+        if job_data == "farming":
+            r = node_key_by_index.inv[tnk_value]
+            base_farm_counts[r] = base_farm_counts.get(r, 0) + 1
+            continue
+
         if job_data is None:
             logger.error(f"Worker for tnk {tnk_value} has no job in base empire data")
             continue
+
+        if not isinstance(job_data, dict):
+            continue
+
         pzk_value = job_data.get("pzk")  # plantzone id (terminal waypoint_key)
+        if pzk_value is None:
+            continue
+
         t = node_key_by_index.inv[pzk_value]
         r = node_key_by_index.inv[tnk_value]
         prev_terminals_sets[t] = r
 
-    return prev_terminals_sets
+    return prev_terminals_sets, base_farm_counts

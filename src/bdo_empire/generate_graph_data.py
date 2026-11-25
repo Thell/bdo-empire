@@ -35,6 +35,18 @@ def prep_graph_nodes(solver_graph: PyDiGraph, data: dict[str, Any]) -> int | Non
     return super_root_index
 
 
+def get_base_empire_root_by_terminal(data: dict[str, Any]) -> dict[int, int]:
+    base_empire = data.get("base_empire")
+    if base_empire is None:
+        return {}
+
+    return {
+        worker["job"]["pzk"]: worker["tnk"]
+        for worker in base_empire["userWorkers"]
+        if isinstance(worker.get("job"), dict) and worker["job"].get("pzk") is not None
+    }
+
+
 def setup_super_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> int | None:
     """Injects the superroot node into the graph"""
     # Super terminals require the super root for connection via any basetown.
@@ -58,12 +70,15 @@ def setup_super_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> int 
 
 
 def setup_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> list[int]:
-    """Prepares terminals with top_n root values."""
+    """Prepares terminals with top_n root values and base empire assignments."""
     # The top_n root values per terminal retain their value and all others are set at zero value.
+    # A base empire assignment is retained even when it falls outside the top_n.
     top_n = data["config"]["top_n"]
     logger.info(f"  setting up plant zones with {top_n} highest valued base towns per plant...")
 
     node_key_by_index = solver_graph.attrs["node_key_by_index"]
+    base_empire_root_by_terminal = get_base_empire_root_by_terminal(data)
+    town_to_region_map = {int(town): region for region, town in data["affiliated_town_region"].items()}
     terminal_indices = []
 
     for i in solver_graph.node_indices():
@@ -77,13 +92,17 @@ def setup_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> list[int]:
         prizes = data["plant_values"][waypoint_key]
         prizes = sorted(prizes.items(), key=lambda x: x[1]["value"], reverse=True)
         prizes = dict(prizes[:top_n])
+        base_root_key = base_empire_root_by_terminal.get(waypoint_key)
+        base_region_key = town_to_region_map.get(base_root_key)
+        if base_region_key is not None and base_region_key not in prizes:
+            prizes[base_region_key] = data["plant_values"][waypoint_key].get(base_region_key, {"value": 0})
 
         values = {}
         # NOTE: Prize keys are affiliated town regions not waypoint keys, so translate!
         for warehouse_key, prize_data in prizes.items():
             value = int(prize_data["value"])
-            if value == 0:
-                break
+            if value == 0 and warehouse_key != base_region_key:
+                continue
             root_key = data["affiliated_town_region"][warehouse_key]
             root_index = node_key_by_index.inv[root_key]
             values[root_index] = value
@@ -91,7 +110,6 @@ def setup_terminals(solver_graph: PyDiGraph, data: dict[str, Any]) -> list[int]:
         if not values:
             logger.warning(f"⚠️ No plantzone drop data for: {node['waypoint_key']}")
 
-    town_to_region_map = {int(town): region for region, town in data["affiliated_town_region"].items()}
     for terminal_index in sorted(terminal_indices):
         node = solver_graph[terminal_index]
         prizes = node["prizes"]
@@ -159,6 +177,9 @@ def setup_node_transit_bounds(solver_graph: PyDiGraph, data: dict[str, Any], sup
 
     all_pairs_path_lengths = get_all_pairs_path_lengths(solver_graph)
     root_indices = solver_graph.attrs["root_indices"]
+    node_key_by_index = solver_graph.attrs["node_key_by_index"]
+    base_empire_root_keys = set(get_base_empire_root_by_terminal(data).values())
+    base_empire_root_indices = {node_key_by_index.inv[key] for key in base_empire_root_keys}
 
     root_transit_ub = {i: solver_graph[i]["ub"] for i in root_indices}
     if super_root_index is not None:
@@ -183,6 +204,8 @@ def setup_node_transit_bounds(solver_graph: PyDiGraph, data: dict[str, Any], sup
 
         nearest_roots = sorted(nearest_roots, key=lambda x: x[1])
         nearest_roots = [i for i, _ in nearest_roots][:nearest_n_lim]
+        # Keep base empire roots available across the route, even when they are not nearest.
+        nearest_roots.extend(sorted(base_empire_root_indices.difference(nearest_roots)))
 
         transit_ubs = {r: root_transit_ub[r] for r in nearest_roots}
         node["transit_bounds"] = transit_ubs
